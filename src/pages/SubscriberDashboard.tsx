@@ -21,6 +21,20 @@ export default function SubscriberDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('Todos')
 
+  if (!user || user.role !== 'subscriber') {
+    return (
+      <div className="container mx-auto px-4 py-20 text-center">
+        <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
+        <p className="text-muted-foreground mb-8">
+          Esta página é exclusiva para Assinantes.
+        </p>
+        <Button asChild>
+          <Link to="/auth?tab=login">Fazer Login</Link>
+        </Button>
+      </div>
+    )
+  }
+
   const filteredWorkouts = workouts.filter((workout) => {
     const matchesSearch =
       workout.title.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -23,8 +23,22 @@ export default function TrainerDashboard() {
     ? getWorkoutsByTrainer(user.id === '1' ? '101' : user.id)
     : []
 
+  if (!user || user.role !== 'trainer') {
+    return (
+      <div className="container mx-auto px-4 py-20 text-center">
+        <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
+        <p className="text-muted-foreground mb-8">
+          Esta página é exclusiva para Personal Trainers.
+        </p>
+        <Button asChild>
+          <Link to="/auth?tab=login">Fazer Login</Link>
+        </Button>
+      </div>
+    )
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 animate-fade-in">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold">Painel do Treinador</h1>

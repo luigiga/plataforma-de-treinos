@@ -1,17 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -24,11 +22,13 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
+  isTrainer: z.boolean().default(false),
 })
 
 const registerSchema = z
@@ -53,14 +53,17 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      if (user.role === 'trainer') navigate('/trainer-dashboard')
-      else navigate('/dashboard')
+      if (user.role === 'trainer') {
+        navigate('/trainer-dashboard')
+      } else {
+        navigate('/dashboard')
+      }
     }
   }, [user, navigate])
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: '', password: '', isTrainer: false },
   })
 
   const registerForm = useForm<z.infer<typeof registerSchema>>({
@@ -75,12 +78,7 @@ export default function Auth() {
   })
 
   function onLogin(data: z.infer<typeof loginSchema>) {
-    // Simulate role detection based on email or just default to subscriber for demo unless specified
-    // For this demo, we'll assume subscriber unless we have a way to toggle in login,
-    // but usually login just checks credentials. Let's assume subscriber for simplicity
-    // or add a toggle in login too? Let's keep it simple: Login logs in as subscriber by default
-    // unless we hardcode a trainer email.
-    const role = data.email.includes('trainer') ? 'trainer' : 'subscriber'
+    const role = data.isTrainer ? 'trainer' : 'subscriber'
     login(data.email, role)
   }
 
@@ -141,6 +139,26 @@ export default function Auth() {
                           />
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={loginForm.control}
+                    name="isTrainer"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>Sou Personal Trainer</FormLabel>
+                          <CardDescription>
+                            Marque se você deseja acessar como treinador.
+                          </CardDescription>
+                        </div>
                       </FormItem>
                     )}
                   />

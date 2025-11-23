@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState } from 'react'
 import { toast } from 'sonner'
 
 export type UserRole = 'subscriber' | 'trainer'
@@ -26,15 +26,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<User | null>(null)
-
-  // Load user from local storage on mount
-  useEffect(() => {
+  // Initialize state from localStorage to avoid flash of null user
+  const [user, setUser] = useState<User | null>(() => {
     const storedUser = localStorage.getItem('pt_platform_user')
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    }
-  }, [])
+    return storedUser ? JSON.parse(storedUser) : null
+  })
 
   const login = (email: string, role: UserRole) => {
     // Mock login
