@@ -22,9 +22,19 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Trash2, Plus, ArrowLeft, Video } from 'lucide-react'
+import {
+  Trash2,
+  Plus,
+  ArrowLeft,
+  Video,
+  Upload,
+  X,
+  FileVideo,
+} from 'lucide-react'
+import { toast } from 'sonner'
 
 const exerciseSchema = z.object({
   name: z.string().min(1, 'Nome do exercício é obrigatório'),
@@ -89,6 +99,42 @@ export default function CreateEditWorkout() {
       })
     }
   }, [isEditing, existingWorkout, form])
+
+  const handleFileUpload = async (
+    index: number,
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('video/')) {
+      toast.error('Por favor, selecione um arquivo de vídeo válido.')
+      return
+    }
+
+    // Validate file size (mock limit 100MB)
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error('O arquivo é muito grande. Limite de 100MB.')
+      return
+    }
+
+    const toastId = toast.loading('Enviando vídeo para o servidor seguro...')
+
+    // Simulate secure upload delay
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    // Create a blob URL to simulate the uploaded file URL
+    // In a real app, this would be the URL returned from the storage service (e.g., S3)
+    const url = URL.createObjectURL(file)
+    form.setValue(`exercises.${index}.videoUrl`, url)
+
+    toast.dismiss(toastId)
+    toast.success('Vídeo enviado com sucesso!')
+
+    // Reset input to allow re-selecting the same file if needed
+    e.target.value = ''
+  }
 
   const onSubmit = (data: z.infer<typeof workoutSchema>) => {
     const workoutData = {
@@ -319,14 +365,72 @@ export default function CreateEditWorkout() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="flex items-center gap-2">
-                            <Video size={14} /> URL do Vídeo (Opcional)
+                            <Video size={14} /> Vídeo do Exercício
                           </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="https://... (mp4 ou link direto)"
-                              {...field}
-                            />
-                          </FormControl>
+                          <div className="space-y-3">
+                            <div className="flex gap-2">
+                              <FormControl>
+                                <Input
+                                  placeholder="Cole a URL do vídeo ou faça upload"
+                                  {...field}
+                                  className={
+                                    field.value &&
+                                    field.value.startsWith('blob:')
+                                      ? 'text-muted-foreground italic'
+                                      : ''
+                                  }
+                                />
+                              </FormControl>
+                              {field.value && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() =>
+                                    form.setValue(
+                                      `exercises.${index}.videoUrl`,
+                                      '',
+                                    )
+                                  }
+                                  title="Remover vídeo"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="file"
+                                id={`video-upload-${index}`}
+                                className="hidden"
+                                accept="video/*"
+                                onChange={(e) => handleFileUpload(index, e)}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                                asChild
+                              >
+                                <label
+                                  htmlFor={`video-upload-${index}`}
+                                  className="cursor-pointer"
+                                >
+                                  <Upload className="mr-2 h-4 w-4" />
+                                  Fazer Upload de Vídeo
+                                </label>
+                              </Button>
+                              <span className="text-xs text-muted-foreground hidden sm:inline-block">
+                                MP4, WebM (Max 100MB)
+                              </span>
+                            </div>
+                          </div>
+                          <FormDescription>
+                            Forneça uma URL externa ou faça upload de um arquivo
+                            local.
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

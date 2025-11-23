@@ -108,13 +108,14 @@ export default function WorkoutDetails() {
                               </div>
                             </button>
                           </DialogTrigger>
-                          <DialogContent className="sm:max-w-[800px] p-0 bg-black border-none">
+                          <DialogContent className="sm:max-w-[800px] p-0 bg-black border-none rounded-xl overflow-hidden">
                             <DialogTitle className="sr-only">
                               Vídeo de {exercise.name}
                             </DialogTitle>
                             <div className="aspect-video w-full">
                               <video
                                 controls
+                                playsInline
                                 className="w-full h-full"
                                 poster={workout.image}
                               >
