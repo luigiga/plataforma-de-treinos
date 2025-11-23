@@ -14,6 +14,13 @@ export type SubscriptionStatus = 'active' | 'inactive' | 'canceled'
 export type SubscriptionPlan = 'free' | 'basic' | 'premium' | 'vip'
 export type UserStatus = 'active' | 'inactive'
 
+export interface SocialLinks {
+  instagram?: string
+  twitter?: string
+  linkedin?: string
+  website?: string
+}
+
 export interface User {
   id: string
   name: string
@@ -21,6 +28,7 @@ export interface User {
   role: UserRole
   avatar?: string
   bio?: string
+  socialLinks?: SocialLinks
   preferences?: string[]
   subscriptionStatus?: SubscriptionStatus
   plan?: SubscriptionPlan
@@ -41,7 +49,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Mock Database for strict validation
 const MOCK_USERS: User[] = [
   {
     id: '0',
@@ -51,6 +58,7 @@ const MOCK_USERS: User[] = [
     avatar: 'https://img.usecurling.com/ppl/medium?gender=male&seed=admin',
     status: 'active',
     plan: 'vip',
+    bio: 'Gerente da Plataforma',
   },
   {
     id: '1',
@@ -62,6 +70,8 @@ const MOCK_USERS: User[] = [
     subscriptionStatus: 'active',
     plan: 'premium',
     status: 'active',
+    bio: 'Focado em superar limites.',
+    socialLinks: { instagram: '@joao.fit' },
   },
   {
     id: '2',
@@ -69,17 +79,17 @@ const MOCK_USERS: User[] = [
     email: 'trainer@fit.com',
     role: 'trainer',
     avatar: 'https://img.usecurling.com/ppl/medium?gender=female&seed=2',
-    bio: 'Especialista em Yoga e Funcional',
+    bio: 'Especialista em Yoga e Funcional. Transformando vidas através do movimento.',
     subscriptionStatus: 'active',
     plan: 'vip',
     status: 'active',
+    socialLinks: { instagram: '@maria.yoga', website: 'www.mariayoga.com' },
   },
 ]
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  // Initialize allUsers from localStorage or MOCK_USERS
   const [allUsers, setAllUsers] = useState<User[]>(() => {
     const storedUsers = localStorage.getItem('pt_platform_users_db')
     return storedUsers ? JSON.parse(storedUsers) : MOCK_USERS
@@ -90,7 +100,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return storedUser ? JSON.parse(storedUser) : null
   })
 
-  // Sync allUsers to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('pt_platform_users_db', JSON.stringify(allUsers))
   }, [allUsers])
@@ -102,24 +111,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       role: UserRole,
     ): Promise<boolean> => {
       logger.info(`Login attempt for ${email}`)
-
-      // Admin credential check
       if (email === 'admin@example.com') {
         if (password !== 'admin123') {
-          logger.warn(`Login failed: Invalid password for admin ${email}`)
           toast.error('Credenciais inválidas.')
           return false
         }
-
-        // If password is correct, ensure we return the admin user even if not in allUsers (or update it)
         let adminUser = allUsers.find((u) => u.email === 'admin@example.com')
         if (!adminUser) {
-          // Fallback to MOCK_USERS[0] if not found in state (e.g. old localstorage)
           adminUser = MOCK_USERS[0]
-          // Update state to include admin
           setAllUsers((prev) => [...prev, adminUser!])
         }
-
         setUser(adminUser)
         localStorage.setItem('pt_platform_user', JSON.stringify(adminUser))
         toast.success(`Bem-vindo de volta, ${adminUser.name}!`)
@@ -127,26 +128,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const existingUser = allUsers.find((u) => u.email === email)
-
       if (existingUser) {
-        // We ignore the passed role if the user exists, to allow auto-detection
-        // This enables Admin login via the standard form (which might send 'subscriber')
-
         if (existingUser.status === 'inactive') {
-          const errorMsg = 'Conta desativada. Entre em contato com o suporte.'
-          logger.warn(`Login failed: Inactive account for ${email}`)
-          toast.error(errorMsg)
+          toast.error('Conta desativada. Entre em contato com o suporte.')
           return false
         }
-
         setUser(existingUser)
         localStorage.setItem('pt_platform_user', JSON.stringify(existingUser))
         toast.success(`Bem-vindo de volta, ${existingUser.name}!`)
         return true
       }
 
-      // Demo login for new users (auto-register for demo purposes if not found)
-      // In a real app, this would fail and require registration
       const newUser: User = {
         id: Math.random().toString(36).substr(2, 9),
         name: email.split('@')[0],
@@ -158,7 +150,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         plan: 'free',
         status: 'active',
       }
-
       setAllUsers((prev) => [...prev, newUser])
       setUser(newUser)
       localStorage.setItem('pt_platform_user', JSON.stringify(newUser))
@@ -198,7 +189,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!user) return
       const updatedUser = { ...user, ...data }
       setUser(updatedUser)
-      // Also update in allUsers
       setAllUsers((prev) =>
         prev.map((u) => (u.id === user.id ? updatedUser : u)),
       )
@@ -219,7 +209,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (u.id === id) {
           const newStatus = u.status === 'active' ? 'inactive' : 'active'
           toast.success(
-            `Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso.`,
+            `Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'}.`,
           )
           return { ...u, status: newStatus }
         }

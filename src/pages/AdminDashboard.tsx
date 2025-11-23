@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth, User } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,9 +23,31 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ShieldAlert, Trash2, Ban, CheckCircle, Search } from 'lucide-react'
+import {
+  ShieldAlert,
+  Trash2,
+  Ban,
+  CheckCircle,
+  Search,
+  Users,
+  Activity,
+  DollarSign,
+} from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+} from 'recharts'
 
 export default function AdminDashboard() {
   const { user, allUsers, deleteUser, toggleUserStatus } = useAuth()
@@ -43,9 +65,7 @@ export default function AdminDashboard() {
     }
   }, [user, navigate])
 
-  if (!user || user.role !== 'admin') {
-    return null
-  }
+  if (!user || user.role !== 'admin') return null
 
   const filteredUsers = allUsers.filter(
     (u) =>
@@ -67,6 +87,15 @@ export default function AdminDashboard() {
     }
   }
 
+  const userGrowthData = [
+    { name: 'Jan', users: 120 },
+    { name: 'Fev', users: 150 },
+    { name: 'Mar', users: 180 },
+    { name: 'Abr', users: 220 },
+    { name: 'Mai', users: 280 },
+    { name: 'Jun', users: allUsers.length + 300 },
+  ]
+
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
@@ -75,36 +104,38 @@ export default function AdminDashboard() {
             <ShieldAlert className="text-primary" /> Painel Administrativo
           </h1>
           <p className="text-muted-foreground">
-            Gerencie usuários e permissões do sistema.
+            Visão geral do sistema e gestão de usuários.
           </p>
         </div>
         <div className="relative w-full md:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Buscar usuários..."
-            className="pl-10 w-full md:w-[300px]"
+            className="pl-10 w-full md:w-[300px] rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="grid gap-6 mb-8 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
+      <div className="grid gap-6 mb-8 md:grid-cols-4">
+        <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total de Usuários
             </CardTitle>
+            <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{allUsers.length}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Assinantes
             </CardTitle>
+            <Activity className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -112,11 +143,12 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Trainers
             </CardTitle>
+            <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -124,16 +156,87 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+        <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Receita Estimada
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">R$ 12.450</div>
+          </CardContent>
+        </Card>
       </div>
 
-      <Card className="overflow-hidden">
+      <div className="grid lg:grid-cols-3 gap-8 mb-8">
+        <Card className="lg:col-span-2 border-none shadow-elevation">
+          <CardHeader>
+            <CardTitle>Crescimento da Plataforma</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ChartContainer
+                config={{
+                  users: { label: 'Usuários', color: 'hsl(var(--primary))' },
+                }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={userGrowthData}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="name"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={10}
+                    />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar
+                      dataKey="users"
+                      fill="var(--color-users)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-elevation">
+          <CardHeader>
+            <CardTitle>Status do Sistema</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <span className="text-sm font-medium">API Server</span>
+              <Badge className="bg-green-500">Online</Badge>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <span className="text-sm font-medium">Database</span>
+              <Badge className="bg-green-500">Online</Badge>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <span className="text-sm font-medium">Storage</span>
+              <Badge className="bg-green-500">Online</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-none shadow-elevation overflow-hidden">
         <CardHeader>
-          <CardTitle>Usuários Registrados</CardTitle>
+          <CardTitle>Gestão de Usuários</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableHead>Usuário</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
@@ -143,7 +246,7 @@ export default function AdminDashboard() {
             </TableHeader>
             <TableBody>
               {filteredUsers.map((u) => (
-                <TableRow key={u.id}>
+                <TableRow key={u.id} className="hover:bg-secondary/30">
                   <TableCell className="flex items-center gap-3">
                     <Avatar>
                       <AvatarImage src={u.avatar} />
@@ -234,7 +337,6 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={!!userToDelete}
         onOpenChange={(open) => !open && setUserToDelete(null)}
@@ -244,8 +346,7 @@ export default function AdminDashboard() {
             <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir permanentemente o usuário{' '}
-              <span className="font-bold">{userToDelete?.name}</span>? Esta ação
-              não pode ser desfeita e todos os dados associados serão perdidos.
+              <span className="font-bold">{userToDelete?.name}</span>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -260,7 +361,6 @@ export default function AdminDashboard() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Toggle Status Confirmation Dialog */}
       <AlertDialog
         open={!!userToToggle}
         onOpenChange={(open) => !open && setUserToToggle(null)}
@@ -276,8 +376,6 @@ export default function AdminDashboard() {
               Tem certeza que deseja{' '}
               {userToToggle?.status === 'active' ? 'desativar' : 'ativar'} o
               usuário <span className="font-bold">{userToToggle?.name}</span>?
-              {userToToggle?.status === 'active' &&
-                ' O usuário não poderá mais fazer login no sistema.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

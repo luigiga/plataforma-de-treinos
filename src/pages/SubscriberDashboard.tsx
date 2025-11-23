@@ -42,7 +42,6 @@ export default function SubscriberDashboard() {
     )
   }
 
-  // Recommendation Logic
   const recommendedWorkouts = workouts
     .filter(
       (w) =>
@@ -77,7 +76,11 @@ export default function SubscriberDashboard() {
           <p className="text-muted-foreground">Pronto para o treino de hoje?</p>
         </div>
         <div className="flex gap-4 w-full md:w-auto">
-          <Button variant="outline" asChild className="hidden md:flex">
+          <Button
+            variant="outline"
+            asChild
+            className="hidden md:flex shadow-sm"
+          >
             <Link to="/progress">
               <TrendingUp className="mr-2 h-4 w-4" /> Meu Progresso
             </Link>
@@ -86,7 +89,7 @@ export default function SubscriberDashboard() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Buscar treinos..."
-              className="pl-10 w-full md:w-[300px] rounded-xl"
+              className="pl-10 w-full md:w-[300px] rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -94,7 +97,6 @@ export default function SubscriberDashboard() {
         </div>
       </div>
 
-      {/* Recommendations Section */}
       {recommendedWorkouts.length > 0 && (
         <section className="mb-10">
           <div className="flex items-center gap-2 mb-4">
@@ -104,7 +106,7 @@ export default function SubscriberDashboard() {
           <div className="grid md:grid-cols-3 gap-6">
             {recommendedWorkouts.map((workout) => (
               <Link key={`rec-${workout.id}`} to={`/workout/${workout.id}`}>
-                <Card className="h-full border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors">
+                <Card className="h-full border-none bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 transition-all duration-300 shadow-sm hover:shadow-md">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">{workout.title}</CardTitle>
                     <div className="flex gap-2 mt-1">
@@ -112,7 +114,7 @@ export default function SubscriberDashboard() {
                         <Badge
                           key={c}
                           variant="secondary"
-                          className="text-[10px]"
+                          className="text-[10px] bg-white/50 dark:bg-black/50"
                         >
                           {c}
                         </Badge>
@@ -136,12 +138,12 @@ export default function SubscriberDashboard() {
         className="mb-8"
         onValueChange={setCategoryFilter}
       >
-        <TabsList className="w-full justify-start overflow-x-auto h-auto p-1 bg-transparent gap-2">
+        <TabsList className="w-full justify-start overflow-x-auto h-auto p-1 bg-transparent gap-2 no-scrollbar">
           {categories.map((cat) => (
             <TabsTrigger
               key={cat}
               value={cat}
-              className="px-4 py-2 rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border bg-background"
+              className="px-4 py-2 rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border bg-background shadow-sm"
             >
               {cat}
             </TabsTrigger>
@@ -153,7 +155,7 @@ export default function SubscriberDashboard() {
         {filteredWorkouts.map((workout, index) => (
           <Link key={workout.id} to={`/workout/${workout.id}`}>
             <Card
-              className="h-full border-none shadow-elevation hover:shadow-ios-float transition-all duration-300 hover:-translate-y-1 overflow-hidden group rounded-2xl"
+              className="h-full border-none shadow-elevation hover:shadow-glass transition-all duration-300 hover:-translate-y-1 overflow-hidden group rounded-2xl bg-card"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               <div className="relative h-48 overflow-hidden">
@@ -165,7 +167,7 @@ export default function SubscriberDashboard() {
                 <div className="absolute top-2 right-2">
                   <Badge
                     variant="secondary"
-                    className="backdrop-blur-md bg-white/80 dark:bg-black/60"
+                    className="backdrop-blur-md bg-white/80 dark:bg-black/60 shadow-sm"
                   >
                     {workout.difficulty}
                   </Badge>
@@ -186,7 +188,7 @@ export default function SubscriberDashboard() {
                     <Badge
                       key={cat}
                       variant="outline"
-                      className="text-xs rounded-md"
+                      className="text-xs rounded-md border-primary/20 text-primary bg-primary/5"
                     >
                       {cat}
                     </Badge>
@@ -195,12 +197,10 @@ export default function SubscriberDashboard() {
               </CardContent>
               <CardFooter className="text-sm text-muted-foreground flex gap-4 pt-0 pb-6">
                 <div className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md">
-                  <Clock size={14} />
-                  {workout.duration} min
+                  <Clock size={14} /> {workout.duration} min
                 </div>
                 <div className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md">
-                  <BarChart size={14} />
-                  {workout.exercises.length} exercícios
+                  <BarChart size={14} /> {workout.exercises.length} exercícios
                 </div>
               </CardFooter>
             </Card>

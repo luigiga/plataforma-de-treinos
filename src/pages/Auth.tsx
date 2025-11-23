@@ -52,13 +52,9 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      if (user.role === 'admin') {
-        navigate('/admin-dashboard')
-      } else if (user.role === 'trainer') {
-        navigate('/trainer-dashboard')
-      } else {
-        navigate('/dashboard')
-      }
+      if (user.role === 'admin') navigate('/admin-dashboard')
+      else if (user.role === 'trainer') navigate('/trainer-dashboard')
+      else navigate('/dashboard')
     }
   }, [user, navigate])
 
@@ -81,11 +77,10 @@ export default function Auth() {
   async function onLogin(data: z.infer<typeof loginSchema>) {
     const role = data.isTrainer ? 'trainer' : 'subscriber'
     const success = await login(data.email, data.password, role)
-    if (!success) {
+    if (!success)
       loginForm.setError('root', {
         message: 'Falha no login. Verifique suas credenciais.',
       })
-    }
   }
 
   function onRegister(data: z.infer<typeof registerSchema>) {
@@ -98,18 +93,22 @@ export default function Auth() {
 
   return (
     <div className="container mx-auto flex items-center justify-center min-h-[calc(100vh-140px)] py-10">
-      <Card className="w-full max-w-md shadow-xl border-none bg-card/50 backdrop-blur-sm">
+      <Card className="w-full max-w-md shadow-glass border-white/20 bg-white/50 backdrop-blur-md dark:bg-black/50">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Bem-vindo</CardTitle>
+          <CardTitle className="text-3xl font-bold">Bem-vindo</CardTitle>
           <CardDescription>
             Entre ou crie sua conta para continuar
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="register">Cadastrar</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-secondary/50 p-1 rounded-xl">
+              <TabsTrigger value="login" className="rounded-lg">
+                Entrar
+              </TabsTrigger>
+              <TabsTrigger value="register" className="rounded-lg">
+                Cadastrar
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
@@ -152,7 +151,7 @@ export default function Auth() {
                     control={loginForm.control}
                     name="isTrainer"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border p-4 bg-secondary/20">
                         <FormControl>
                           <Checkbox
                             checked={field.value}
@@ -161,9 +160,6 @@ export default function Auth() {
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel>Sou Personal Trainer</FormLabel>
-                          <CardDescription>
-                            Marque se você deseja acessar como treinador.
-                          </CardDescription>
                         </div>
                       </FormItem>
                     )}
@@ -173,7 +169,10 @@ export default function Auth() {
                       {loginForm.formState.errors.root.message}
                     </p>
                   )}
-                  <Button type="submit" className="w-full">
+                  <Button
+                    type="submit"
+                    className="w-full rounded-xl h-12 text-lg"
+                  >
                     Entrar
                   </Button>
                 </form>
@@ -250,7 +249,7 @@ export default function Auth() {
                     control={registerForm.control}
                     name="isTrainer"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border p-4 bg-secondary/20">
                         <FormControl>
                           <Checkbox
                             checked={field.value}
@@ -259,14 +258,14 @@ export default function Auth() {
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel>Sou Personal Trainer</FormLabel>
-                          <CardDescription>
-                            Marque se você deseja publicar treinos.
-                          </CardDescription>
                         </div>
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full">
+                  <Button
+                    type="submit"
+                    className="w-full rounded-xl h-12 text-lg"
+                  >
                     Criar Conta
                   </Button>
                 </form>

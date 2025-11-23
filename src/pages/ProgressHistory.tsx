@@ -13,6 +13,8 @@ import {
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
+  LineChart,
+  Line,
 } from 'recharts'
 import { Calendar, Clock, TrendingUp } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
@@ -28,7 +30,6 @@ export default function ProgressHistory() {
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   )
 
-  // Prepare chart data (last 7 days duration)
   const chartData = logs
     .slice(0, 7)
     .reverse()
@@ -45,7 +46,7 @@ export default function ProgressHistory() {
       <h1 className="text-3xl font-bold mb-8">Meu Progresso</h1>
 
       <div className="grid md:grid-cols-3 gap-6 mb-8">
-        <Card className="glass-card border-none">
+        <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total de Treinos
@@ -53,10 +54,10 @@ export default function ProgressHistory() {
             <TrendingUp className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalWorkouts}</div>
+            <div className="text-3xl font-bold">{totalWorkouts}</div>
           </CardContent>
         </Card>
-        <Card className="glass-card border-none">
+        <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Tempo Total
@@ -64,10 +65,15 @@ export default function ProgressHistory() {
             <Clock className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalTime} min</div>
+            <div className="text-3xl font-bold">
+              {totalTime}{' '}
+              <span className="text-sm font-normal text-muted-foreground">
+                min
+              </span>
+            </div>
           </CardContent>
         </Card>
-        <Card className="glass-card border-none">
+        <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Último Treino
@@ -75,7 +81,7 @@ export default function ProgressHistory() {
             <Calendar className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-3xl font-bold">
               {logs.length > 0
                 ? format(parseISO(logs[0].date), 'dd/MM', { locale: ptBR })
                 : '-'}
@@ -85,7 +91,7 @@ export default function ProgressHistory() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
-        <Card className="shadow-elevation border-none">
+        <Card className="border-none shadow-elevation">
           <CardHeader>
             <CardTitle>Duração dos Treinos (min)</CardTitle>
           </CardHeader>
@@ -93,15 +99,16 @@ export default function ProgressHistory() {
             <div className="h-[300px] w-full">
               <ChartContainer
                 config={{
-                  duration: {
-                    label: 'Duração',
-                    color: 'hsl(var(--primary))',
-                  },
+                  duration: { label: 'Duração', color: 'hsl(var(--primary))' },
                 }}
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="hsl(var(--border))"
+                    />
                     <XAxis
                       dataKey="date"
                       tickLine={false}
@@ -122,42 +129,42 @@ export default function ProgressHistory() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-elevation border-none">
+        <Card className="border-none shadow-elevation">
           <CardHeader>
-            <CardTitle>Histórico Recente</CardTitle>
+            <CardTitle>Consistência</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {logs.slice(0, 5).map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                >
-                  <div>
-                    <p className="font-semibold">{log.workoutTitle}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(parseISO(log.date), "dd 'de' MMMM 'às' HH:mm", {
-                        locale: ptBR,
-                      })}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-bold text-primary">
-                      {log.duration} min
-                    </span>
-                    {log.notes && (
-                      <p className="text-xs text-muted-foreground max-w-[150px] truncate">
-                        {log.notes}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {logs.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhum treino registrado ainda.
-                </p>
-              )}
+            <div className="h-[300px] w-full">
+              <ChartContainer
+                config={{
+                  duration: { label: 'Minutos', color: 'hsl(var(--chart-2))' },
+                }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={10}
+                    />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line
+                      type="monotone"
+                      dataKey="duration"
+                      stroke="var(--color-duration)"
+                      strokeWidth={2}
+                      dot={{ r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </div>
           </CardContent>
         </Card>

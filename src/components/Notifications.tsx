@@ -15,9 +15,8 @@ export function Notifications() {
   const { notifications, markNotificationAsRead } = useData()
   const { user } = useAuth()
 
-  // Filter notifications for current user or 'all'
   const userNotifications = notifications.filter(
-    (n) => n.userId === user?.id || n.userId === 'all' || n.userId === '1', // '1' is mock user id
+    (n) => n.userId === user?.id || n.userId === 'all' || n.userId === '1',
   )
 
   const unreadCount = userNotifications.filter((n) => !n.read).length
@@ -28,16 +27,19 @@ export function Notifications() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative rounded-full btn-press"
+          className="relative rounded-full btn-press hover:bg-secondary"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background animate-pulse" />
+            <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background animate-pulse" />
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <div className="p-4 border-b border-border">
+      <PopoverContent
+        className="w-80 p-0 shadow-glass border-white/20"
+        align="end"
+      >
+        <div className="p-4 border-b border-border bg-secondary/30 backdrop-blur-sm">
           <h4 className="font-semibold leading-none">Notificações</h4>
           <p className="text-xs text-muted-foreground mt-1">
             Você tem {unreadCount} novas mensagens.
@@ -51,7 +53,8 @@ export function Notifications() {
                   key={notification.id}
                   className={cn(
                     'p-4 border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer',
-                    !notification.read && 'bg-primary/5',
+                    !notification.read &&
+                      'bg-primary/5 border-l-2 border-l-primary',
                   )}
                   onClick={() => markNotificationAsRead(notification.id)}
                 >
@@ -63,7 +66,10 @@ export function Notifications() {
                       <p className="text-xs text-muted-foreground">
                         {new Date(notification.createdAt).toLocaleDateString()}{' '}
                         -{' '}
-                        {new Date(notification.createdAt).toLocaleTimeString()}
+                        {new Date(notification.createdAt).toLocaleTimeString(
+                          [],
+                          { hour: '2-digit', minute: '2-digit' },
+                        )}
                       </p>
                     </Link>
                   ) : (

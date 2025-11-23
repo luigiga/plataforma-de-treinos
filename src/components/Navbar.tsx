@@ -64,11 +64,11 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'glass-nav h-[60px]' : 'bg-transparent h-[70px]'}`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'glass-nav h-16' : 'bg-transparent h-20'}`}
     >
       <div className="container mx-auto px-4 h-full flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="bg-primary text-white p-1.5 rounded-lg transition-transform group-hover:scale-110 duration-300 shadow-lg shadow-primary/30">
+          <div className="bg-primary text-white p-2 rounded-xl transition-transform group-hover:scale-110 duration-300 shadow-lg shadow-primary/30">
             <Dumbbell size={20} />
           </div>
           <span className="font-display font-bold text-xl tracking-tight text-foreground">
@@ -83,7 +83,7 @@ export function Navbar() {
               <Link
                 key={link.path}
                 to={link.path}
-                className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === link.path ? 'text-primary' : 'text-muted-foreground'}`}
+                className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === link.path ? 'text-primary font-bold' : 'text-muted-foreground'}`}
               >
                 {link.name}
               </Link>
@@ -98,9 +98,9 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="relative h-10 w-10 rounded-full btn-press"
+                    className="relative h-10 w-10 rounded-full btn-press p-0"
                   >
-                    <Avatar className="h-10 w-10 border border-border shadow-sm">
+                    <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm">
                       <AvatarImage src={user.avatar} alt={user.name} />
                       <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
@@ -129,14 +129,9 @@ export function Navbar() {
                     </DropdownMenuItem>
                   )}
                   {user.role === 'subscriber' && (
-                    <>
-                      <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-                        Meus Treinos
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate('/progress')}>
-                        Meu Progresso
-                      </DropdownMenuItem>
-                    </>
+                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                      Meus Treinos
+                    </DropdownMenuItem>
                   )}
                   {user.role === 'admin' && (
                     <DropdownMenuItem
@@ -166,7 +161,7 @@ export function Navbar() {
               </Button>
               <Button
                 onClick={() => navigate('/auth?tab=register')}
-                className="btn-press shadow-lg shadow-primary/20"
+                className="btn-press shadow-lg shadow-primary/20 rounded-full px-6"
               >
                 Cadastrar
               </Button>
@@ -200,22 +195,6 @@ export function Navbar() {
                 <div className="flex flex-col gap-3 mt-4">
                   {user ? (
                     <>
-                      <div className="flex items-center gap-3 mb-4">
-                        <Avatar>
-                          <AvatarImage src={user.avatar} />
-                          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{user.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {user.role === 'trainer'
-                              ? 'Personal Trainer'
-                              : user.role === 'admin'
-                                ? 'Administrador'
-                                : 'Assinante'}
-                          </p>
-                        </div>
-                      </div>
                       <Button
                         variant="outline"
                         onClick={() => navigate('/profile')}

@@ -6,36 +6,36 @@
 
 @layer base {
   :root {
-    /* iOS Inspired Palette - Enhanced for Vibrancy */
-    --background: 210 20% 98%; /* #F5F7FA - Light Blue-Grey */
-    --foreground: 222 47% 11%; /* #0F172A */
+    /* Polished Zinc & Violet Theme */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 240 10% 3.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 211 100% 50%; /* #007AFF - iOS Blue */
+    --primary: 262 83% 58%; /* Violet 600 */
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222 47% 11.2%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222 47% 11.2%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 211 100% 50%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 262 83% 58%;
 
-    --radius: 1rem; /* 16px for more rounded iOS feel */
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -46,41 +46,41 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-    --chart-1: 211 100% 50%;
-    --chart-2: 160 84% 39%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --chart-1: 262 83% 58%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 211 100% 50%;
-    --primary-foreground: 222 47% 11.2%;
+    --primary: 263 70% 50%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 263 70% 50%;
   }
 }
 
@@ -99,8 +99,6 @@
   h6 {
     @apply font-display tracking-tight;
   }
-
-  /* Smooth scrolling for the whole page */
   html {
     scroll-behavior: smooth;
   }
@@ -108,19 +106,12 @@
 
 @layer utilities {
   .glass-nav {
-    @apply bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-sm dark:bg-black/70 dark:border-white/10;
+    @apply bg-white/80 backdrop-blur-md border-b border-white/20 shadow-sm dark:bg-black/80 dark:border-white/10;
   }
-
   .glass-card {
-    @apply bg-white/60 backdrop-blur-lg border border-white/20 shadow-lg dark:bg-black/40 dark:border-white/10;
+    @apply bg-white/50 backdrop-blur-sm border border-white/20 shadow-glass dark:bg-black/40 dark:border-white/10;
   }
-
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  /* iOS-like button press effect */
   .btn-press {
-    @apply active:scale-95 transition-transform duration-200 ease-apple;
+    @apply active:scale-95 transition-transform duration-150 ease-out;
   }
 }

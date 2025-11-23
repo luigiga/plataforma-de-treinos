@@ -14,11 +14,9 @@ export default function TrainerDashboard() {
   const { getWorkoutsByTrainer, deleteWorkout, following, publicUsers } =
     useData()
 
-  // Mock logic: Trainer ID is '101' for demo if user.id is '1' (mock user), else user.id
   const trainerId = user?.id === '1' ? '101' : user?.id || ''
   const trainerWorkouts = getWorkoutsByTrainer(trainerId)
 
-  // Get clients (users following this trainer)
   const myClients = following
     .filter((f) => f.followingId === trainerId)
     .map((f) => publicUsers.find((u) => u.id === f.followerId))
@@ -47,7 +45,7 @@ export default function TrainerDashboard() {
             Gerencie seus alunos e treinos em um só lugar.
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="shadow-lg shadow-primary/20">
           <Link to="/create-workout">
             <Plus className="mr-2 h-4 w-4" /> Novo Treino
           </Link>
@@ -55,11 +53,19 @@ export default function TrainerDashboard() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
-          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-          <TabsTrigger value="clients">Alunos</TabsTrigger>
-          <TabsTrigger value="workouts">Treinos</TabsTrigger>
-          <TabsTrigger value="messages">Mensagens</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 lg:w-[600px] bg-secondary/30 p-1 rounded-xl">
+          <TabsTrigger value="overview" className="rounded-lg">
+            Visão Geral
+          </TabsTrigger>
+          <TabsTrigger value="clients" className="rounded-lg">
+            Alunos
+          </TabsTrigger>
+          <TabsTrigger value="workouts" className="rounded-lg">
+            Treinos
+          </TabsTrigger>
+          <TabsTrigger value="messages" className="rounded-lg">
+            Mensagens
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -68,18 +74,15 @@ export default function TrainerDashboard() {
             totalClients={myClients.length}
           />
         </TabsContent>
-
         <TabsContent value="clients">
           <TrainerClients clients={myClients} />
         </TabsContent>
-
         <TabsContent value="workouts">
           <TrainerWorkouts
             workouts={trainerWorkouts}
             onDelete={deleteWorkout}
           />
         </TabsContent>
-
         <TabsContent value="messages">
           <TrainerMessages />
         </TabsContent>

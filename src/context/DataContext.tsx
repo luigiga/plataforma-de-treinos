@@ -4,9 +4,11 @@ import React, {
   useState,
   useMemo,
   useCallback,
+  useEffect,
 } from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
+import { SocialLinks } from './AuthContext'
 
 export interface Exercise {
   id: string
@@ -71,6 +73,7 @@ export interface PublicUser {
   role: 'subscriber' | 'trainer'
   avatar: string
   bio?: string
+  socialLinks?: SocialLinks
 }
 
 export interface Assignment {
@@ -148,13 +151,6 @@ const INITIAL_WORKOUTS: Workout[] = [
         videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
         variations: [{ name: 'Supino Inclinado', sets: '3', reps: '12' }],
       },
-      {
-        id: 'e2',
-        name: 'Agachamento Livre',
-        sets: '4',
-        reps: '12',
-        instructions: 'Desça até quebrar a paralela.',
-      },
     ],
   },
   {
@@ -189,6 +185,7 @@ const INITIAL_PUBLIC_USERS: PublicUser[] = [
     role: 'trainer',
     avatar: 'https://img.usecurling.com/ppl/medium?gender=male&seed=101',
     bio: 'Especialista em Hipertrofia',
+    socialLinks: { instagram: '@carlos.fit' },
   },
   {
     id: '102',
@@ -196,6 +193,7 @@ const INITIAL_PUBLIC_USERS: PublicUser[] = [
     role: 'trainer',
     avatar: 'https://img.usecurling.com/ppl/medium?gender=female&seed=102',
     bio: 'Yoga e Bem-estar',
+    socialLinks: { instagram: '@ana.yoga', website: 'anayoga.com' },
   },
   {
     id: 'u1',
@@ -204,19 +202,9 @@ const INITIAL_PUBLIC_USERS: PublicUser[] = [
     avatar: 'https://img.usecurling.com/ppl/medium?gender=male&seed=10',
     bio: 'Focado em resultados',
   },
-  {
-    id: 'u2',
-    name: 'Maria Clara',
-    role: 'subscriber',
-    avatar: 'https://img.usecurling.com/ppl/medium?gender=female&seed=11',
-    bio: 'Amante de corridas',
-  },
 ]
 
-const INITIAL_FOLLOWING = [
-  { followerId: 'u1', followingId: '101' },
-  { followerId: 'u2', followingId: '101' },
-]
+const INITIAL_FOLLOWING = [{ followerId: 'u1', followingId: '101' }]
 
 const INITIAL_MESSAGES: Message[] = [
   {
@@ -241,6 +229,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES)
 
+  // Simulate Push Notifications
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const newNotif: Notification = {
+        id: 'sim-1',
+        userId: 'all',
+        message: 'Novo treino de Yoga disponível!',
+        read: false,
+        createdAt: new Date().toISOString(),
+        type: 'info',
+        link: '/workout/2',
+      }
+      setNotifications((prev) => {
+        if (prev.find((n) => n.id === 'sim-1')) return prev
+        toast.info('Nova Notificação: Novo treino de Yoga disponível!')
+        return [newNotif, ...prev]
+      })
+    }, 10000) // 10 seconds after load
+    return () => clearTimeout(timer)
+  }, [])
+
   const addWorkout = useCallback(
     (workoutData: Omit<Workout, 'id' | 'createdAt' | 'trainerName'>) => {
       const newWorkout: Workout = {
@@ -250,7 +259,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         trainerName: 'Você',
       }
       setWorkouts((prev) => [...prev, newWorkout])
-      logger.info(`Workout created: ${newWorkout.title}`)
       toast.success('Treino criado com sucesso!')
     },
     [],
@@ -260,13 +268,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     setWorkouts((prev) =>
       prev.map((w) => (w.id === id ? { ...w, ...data } : w)),
     )
-    logger.info(`Workout updated: ${id}`)
     toast.success('Treino atualizado!')
   }, [])
 
   const deleteWorkout = useCallback((id: string) => {
     setWorkouts((prev) => prev.filter((w) => w.id !== id))
-    logger.info(`Workout deleted: ${id}`)
     toast.success('Treino excluído.')
   }, [])
 
@@ -328,6 +334,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         read: false,
       }
       setNotifications((prev) => [newNotification, ...prev])
+      toast(newNotification.message)
     },
     [],
   )
@@ -394,6 +401,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         read: false,
       }
       setMessages((prev) => [...prev, newMessage])
+      // Simulate push notification for receiver
+      if (receiverId !== '1') {
+        // Don't notify mock user if they are sender
+        // In real app, this would go to backend
+      }
     },
     [],
   )
@@ -456,8 +468,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
 
 export const useData = () => {
   const context = useContext(DataContext)
-  if (context === undefined) {
+  if (context === undefined)
     throw new Error('useData must be used within a DataProvider')
-  }
   return context
 }

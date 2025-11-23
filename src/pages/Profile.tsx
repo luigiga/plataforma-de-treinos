@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useData } from '@/context/DataContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Card,
@@ -13,11 +15,16 @@ import {
 } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
-import { Users } from 'lucide-react'
+import { Instagram, Twitter, Linkedin, Globe } from 'lucide-react'
 
 export default function Profile() {
   const { user, updateUser } = useAuth()
-  const { following, publicUsers } = useData()
+  const { following } = useData()
+  const [bio, setBio] = useState(user?.bio || '')
+  const [instagram, setInstagram] = useState(user?.socialLinks?.instagram || '')
+  const [twitter, setTwitter] = useState(user?.socialLinks?.twitter || '')
+  const [linkedin, setLinkedin] = useState(user?.socialLinks?.linkedin || '')
+  const [website, setWebsite] = useState(user?.socialLinks?.website || '')
 
   if (!user)
     return (
@@ -28,7 +35,10 @@ export default function Profile() {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault()
-    toast.success('Perfil atualizado com sucesso!')
+    updateUser({
+      bio,
+      socialLinks: { instagram, twitter, linkedin, website },
+    })
   }
 
   const followingCount = following.filter(
@@ -39,58 +49,82 @@ export default function Profile() {
   ).length
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Configurações</h1>
-        <div className="flex gap-6 text-sm">
+    <div className="container mx-auto px-4 py-8 max-w-4xl animate-fade-in">
+      <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-6">
+        <div className="flex items-center gap-6">
+          <div className="relative group">
+            <Avatar className="h-24 w-24 border-4 border-background shadow-xl">
+              <AvatarImage src={user.avatar} />
+              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+              <span className="text-white text-xs font-bold">Alterar</span>
+            </div>
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold">{user.name}</h1>
+            <p className="text-muted-foreground">{user.email}</p>
+          </div>
+        </div>
+        <div className="flex gap-8 text-sm bg-secondary/30 p-4 rounded-2xl">
           <div className="text-center">
-            <p className="font-bold text-xl">{followingCount}</p>
+            <p className="font-bold text-2xl text-primary">{followingCount}</p>
             <p className="text-muted-foreground">Seguindo</p>
           </div>
           <div className="text-center">
-            <p className="font-bold text-xl">{followersCount}</p>
+            <p className="font-bold text-2xl text-primary">{followersCount}</p>
             <p className="text-muted-foreground">Seguidores</p>
           </div>
         </div>
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8">
-          <TabsTrigger value="profile">Meu Perfil</TabsTrigger>
-          <TabsTrigger value="account">Conta</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8 bg-secondary/30 p-1 rounded-xl">
+          <TabsTrigger value="profile" className="rounded-lg">
+            Perfil
+          </TabsTrigger>
+          <TabsTrigger value="social" className="rounded-lg">
+            Social
+          </TabsTrigger>
+          <TabsTrigger value="account" className="rounded-lg">
+            Conta
+          </TabsTrigger>
           {user.role === 'subscriber' && (
-            <TabsTrigger value="subscription">Assinatura</TabsTrigger>
+            <TabsTrigger value="subscription" className="rounded-lg">
+              Assinatura
+            </TabsTrigger>
           )}
           {user.role === 'trainer' && (
-            <TabsTrigger value="trainer">Perfil Profissional</TabsTrigger>
+            <TabsTrigger value="trainer" className="rounded-lg">
+              Profissional
+            </TabsTrigger>
           )}
         </TabsList>
 
         <TabsContent value="profile">
-          <Card>
+          <Card className="border-none shadow-elevation">
             <CardHeader>
               <CardTitle>Informações Pessoais</CardTitle>
               <CardDescription>
-                Atualize seus dados de identificação.
+                Personalize como você aparece na plataforma.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSaveProfile} className="space-y-6">
-                <div className="flex items-center gap-6">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src={user.avatar} />
-                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <Button variant="outline">Alterar Foto</Button>
-                </div>
                 <div className="grid gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="name">Nome Completo</Label>
                     <Input id="name" defaultValue={user.name} />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" defaultValue={user.email} disabled />
+                    <Label htmlFor="bio">Biografia</Label>
+                    <Textarea
+                      id="bio"
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Conte um pouco sobre você..."
+                      className="min-h-[100px]"
+                    />
                   </div>
                 </div>
                 <Button type="submit">Salvar Alterações</Button>
@@ -99,13 +133,73 @@ export default function Profile() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="social">
+          <Card className="border-none shadow-elevation">
+            <CardHeader>
+              <CardTitle>Redes Sociais</CardTitle>
+              <CardDescription>
+                Conecte suas redes para que outros possam te encontrar.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveProfile} className="space-y-4">
+                <div className="grid gap-2">
+                  <Label className="flex items-center gap-2">
+                    <Instagram size={16} /> Instagram
+                  </Label>
+                  <Input
+                    placeholder="@usuario"
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="flex items-center gap-2">
+                    <Twitter size={16} /> Twitter
+                  </Label>
+                  <Input
+                    placeholder="@usuario"
+                    value={twitter}
+                    onChange={(e) => setTwitter(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="flex items-center gap-2">
+                    <Linkedin size={16} /> LinkedIn
+                  </Label>
+                  <Input
+                    placeholder="URL do perfil"
+                    value={linkedin}
+                    onChange={(e) => setLinkedin(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="flex items-center gap-2">
+                    <Globe size={16} /> Website
+                  </Label>
+                  <Input
+                    placeholder="https://..."
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                  />
+                </div>
+                <Button type="submit">Salvar Redes Sociais</Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="account">
-          <Card>
+          <Card className="border-none shadow-elevation">
             <CardHeader>
               <CardTitle>Segurança</CardTitle>
-              <CardDescription>Gerencie sua senha.</CardDescription>
+              <CardDescription>Gerencie sua senha e acesso.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" defaultValue={user.email} disabled />
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="current-password">Senha Atual</Label>
                 <Input id="current-password" type="password" />
@@ -120,20 +214,24 @@ export default function Profile() {
         </TabsContent>
 
         <TabsContent value="subscription">
-          <Card>
+          <Card className="border-none shadow-elevation">
             <CardHeader>
               <CardTitle>Sua Assinatura</CardTitle>
-              <CardDescription>Gerencie seu plano.</CardDescription>
+              <CardDescription>
+                Gerencie seu plano e pagamentos.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-secondary/50 p-4 rounded-lg flex justify-between items-center">
+              <div className="bg-primary/5 border border-primary/20 p-6 rounded-xl flex justify-between items-center">
                 <div>
-                  <p className="font-bold">Plano Premium</p>
+                  <p className="font-bold text-lg text-primary">
+                    Plano Premium
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     Próxima cobrança: 25/12/2024
                   </p>
                 </div>
-                <span className="text-green-600 font-bold text-sm bg-green-100 px-2 py-1 rounded">
+                <span className="text-green-600 font-bold text-sm bg-green-100 px-3 py-1 rounded-full">
                   Ativo
                 </span>
               </div>
@@ -146,22 +244,14 @@ export default function Profile() {
         </TabsContent>
 
         <TabsContent value="trainer">
-          <Card>
+          <Card className="border-none shadow-elevation">
             <CardHeader>
               <CardTitle>Perfil Profissional</CardTitle>
               <CardDescription>
-                Como você aparece para os alunos.
+                Informações visíveis para seus alunos.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="bio">Biografia</Label>
-                <Input
-                  id="bio"
-                  defaultValue={user.bio}
-                  placeholder="Conte um pouco sobre sua experiência..."
-                />
-              </div>
               <div className="grid gap-2">
                 <Label htmlFor="specialties">Especialidades</Label>
                 <Input
