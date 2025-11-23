@@ -25,6 +25,8 @@ export interface SocialLinks {
 
 export interface User {
   id: string
+  username: string
+  full_name: string
   name: string
   email: string
   role: UserRole
@@ -46,7 +48,7 @@ interface AuthContextType {
   login: (email: string, password: string, role: UserRole) => Promise<boolean>
   register: (data: Partial<User>) => void
   logout: () => void
-  updateUser: (data: Partial<User>) => void
+  updateUser: (data: Partial<User>) => Promise<{ error: any }>
   deleteUser: (id: string) => void
   toggleUserStatus: (id: string) => void
   loading: boolean
@@ -64,6 +66,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const mapProfileToUser = (profile: any): User => ({
     id: profile.id,
+    username: profile.username || '',
+    full_name: profile.full_name || '',
     name: profile.full_name || profile.username || 'User',
     email: profile.email || '',
     role: (profile.role as UserRole) || 'subscriber',
@@ -179,44 +183,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateUser = useCallback(
     async (data: Partial<User>) => {
-      if (!user) return
+      if (!user) return { error: 'No user' }
+
+      const updates: any = {}
+      if (data.full_name !== undefined) updates.full_name = data.full_name
+      if (data.username !== undefined) updates.username = data.username
+      if (data.bio !== undefined) updates.bio = data.bio
+      if (data.avatar !== undefined) updates.avatar_url = data.avatar
+
+      // Metadata updates
+      const metadataUpdates: any = {}
+      if (data.socialLinks) metadataUpdates.socialLinks = data.socialLinks
+      if (data.preferences) metadataUpdates.preferences = data.preferences
+      if (data.subscriptionStatus)
+        metadataUpdates.subscriptionStatus = data.subscriptionStatus
+      if (data.plan) metadataUpdates.plan = data.plan
+      if (data.status) metadataUpdates.status = data.status
+      if (data.points !== undefined) metadataUpdates.points = data.points
+      if (data.badges) metadataUpdates.badges = data.badges
+
+      if (Object.keys(metadataUpdates).length > 0) {
+        // We need to merge with existing metadata, but for now we assume the backend trigger or simple update handles it.
+        // Since we are updating a JSONB column, we should ideally fetch first or use a jsonb_set function.
+        // However, Supabase JS client updates the whole column if we pass an object.
+        // To be safe, we will merge in the client side with the current user metadata (which we don't have fully raw here, but we have the mapped user).
+        // Let's assume we just update what we have.
+        // A better approach for production is to use a stored procedure or careful patching.
+        // For this task, we'll construct the metadata object.
+        updates.metadata = {
+          socialLinks: data.socialLinks || user.socialLinks,
+          preferences: data.preferences || user.preferences,
+          subscriptionStatus:
+            data.subscriptionStatus || user.subscriptionStatus,
+          plan: data.plan || user.plan,
+          status: data.status || user.status,
+          points: data.points !== undefined ? data.points : user.points,
+          badges: data.badges || user.badges,
+        }
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          full_name: data.name,
-          bio: data.bio,
-          avatar_url: data.avatar,
-          metadata: {
-            socialLinks: data.socialLinks || user.socialLinks,
-            preferences: data.preferences || user.preferences,
-            subscriptionStatus:
-              data.subscriptionStatus || user.subscriptionStatus,
-            plan: data.plan || user.plan,
-            status: data.status || user.status,
-            points: data.points !== undefined ? data.points : user.points,
-            badges: data.badges || user.badges,
-          },
-        })
+        .update(updates)
         .eq('id', user.id)
 
       if (error) {
-        toast.error('Erro ao atualizar perfil')
+        toast.error('Erro ao atualizar perfil: ' + error.message)
+        return { error }
       } else {
         const updatedUser = { ...user, ...data }
+        // If full_name or username changed, update name
+        if (data.full_name || data.username) {
+          updatedUser.name = data.full_name || data.username || updatedUser.name
+        }
+
         setUser(updatedUser)
         setAllUsers((prev) =>
           prev.map((u) => (u.id === user.id ? updatedUser : u)),
         )
         if (!data.points) toast.success('Perfil atualizado!')
+        return { error: null }
       }
     },
     [user],
   )
 
   const deleteUser = useCallback(async (id: string) => {
-    // Client-side deletion of auth user is not allowed usually.
-    // We can delete the profile, but auth user remains.
-    // For this demo, we'll just delete the profile.
     const { error } = await supabase.from('profiles').delete().eq('id', id)
     if (error) {
       toast.error('Erro ao excluir usuário')
@@ -235,7 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const { error } = await supabase
         .from('profiles')
         .update({
-          metadata: { ...targetUser, status: newStatus }, // Simplified metadata update
+          metadata: { ...targetUser, status: newStatus },
         })
         .eq('id', id)
 

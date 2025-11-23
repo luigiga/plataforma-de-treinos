@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
 import { useAuth } from '@/context/AuthContext'
 import { useData } from '@/context/DataContext'
 import { Button } from '@/components/ui/button'
@@ -14,17 +17,87 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Instagram, Twitter, Linkedin, Globe } from 'lucide-react'
+import {
+  Instagram,
+  Twitter,
+  Linkedin,
+  Globe,
+  Camera,
+  Loader2,
+} from 'lucide-react'
 import { Gamification } from '@/components/Gamification'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormDescription,
+} from '@/components/ui/form'
+import { supabase } from '@/lib/supabase/client'
+import { toast } from 'sonner'
+
+const profileSchema = z.object({
+  username: z
+    .string()
+    .min(3, 'Username deve ter pelo menos 3 caracteres')
+    .regex(
+      /^[a-zA-Z0-9_]+$/,
+      'Username deve conter apenas letras, números e underline',
+    ),
+  full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  bio: z.string().max(500, 'Bio deve ter no máximo 500 caracteres').optional(),
+})
+
+const socialSchema = z.object({
+  instagram: z.string().optional(),
+  twitter: z.string().optional(),
+  linkedin: z.string().optional(),
+  website: z.string().optional(),
+})
 
 export default function Profile() {
   const { user, updateUser } = useAuth()
   const { following } = useData()
-  const [bio, setBio] = useState(user?.bio || '')
-  const [instagram, setInstagram] = useState(user?.socialLinks?.instagram || '')
-  const [twitter, setTwitter] = useState(user?.socialLinks?.twitter || '')
-  const [linkedin, setLinkedin] = useState(user?.socialLinks?.linkedin || '')
-  const [website, setWebsite] = useState(user?.socialLinks?.website || '')
+  const [uploading, setUploading] = useState(false)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+
+  const profileForm = useForm<z.infer<typeof profileSchema>>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      username: '',
+      full_name: '',
+      bio: '',
+    },
+  })
+
+  const socialForm = useForm<z.infer<typeof socialSchema>>({
+    resolver: zodResolver(socialSchema),
+    defaultValues: {
+      instagram: '',
+      twitter: '',
+      linkedin: '',
+      website: '',
+    },
+  })
+
+  useEffect(() => {
+    if (user) {
+      profileForm.reset({
+        username: user.username || '',
+        full_name: user.full_name || '',
+        bio: user.bio || '',
+      })
+      socialForm.reset({
+        instagram: user.socialLinks?.instagram || '',
+        twitter: user.socialLinks?.twitter || '',
+        linkedin: user.socialLinks?.linkedin || '',
+        website: user.socialLinks?.website || '',
+      })
+      setAvatarPreview(user.avatar || null)
+    }
+  }, [user, profileForm, socialForm])
 
   if (!user)
     return (
@@ -33,12 +106,69 @@ export default function Profile() {
       </div>
     )
 
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault()
-    updateUser({
-      bio,
-      socialLinks: { instagram, twitter, linkedin, website },
-    })
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true)
+      if (!e.target.files || e.target.files.length === 0) {
+        throw new Error('Selecione uma imagem para upload.')
+      }
+
+      const file = e.target.files[0]
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true })
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      // Get Public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('avatars').getPublicUrl(fileName)
+
+      setAvatarPreview(publicUrl)
+      toast.success('Imagem carregada! Clique em Salvar para confirmar.')
+    } catch (error: any) {
+      toast.error('Erro no upload: ' + error.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const onProfileSubmit = async (data: z.infer<typeof profileSchema>) => {
+    try {
+      const updates: any = {
+        username: data.username,
+        full_name: data.full_name,
+        bio: data.bio,
+      }
+
+      if (avatarPreview && avatarPreview !== user.avatar) {
+        updates.avatar = avatarPreview
+      }
+
+      const { error } = await updateUser(updates)
+      if (error) throw error
+    } catch (error: any) {
+      console.error(error)
+      // Error is already handled in updateUser with toast, but we can add specific handling here if needed
+    }
+  }
+
+  const onSocialSubmit = async (data: z.infer<typeof socialSchema>) => {
+    try {
+      const { error } = await updateUser({
+        socialLinks: data,
+      })
+      if (error) throw error
+    } catch (error: any) {
+      console.error(error)
+    }
   }
 
   const followingCount = following.filter(
@@ -54,16 +184,31 @@ export default function Profile() {
         <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
           <div className="relative group">
             <Avatar className="h-24 w-24 border-4 border-background shadow-xl">
-              <AvatarImage src={user.avatar} />
+              <AvatarImage src={avatarPreview || user.avatar} />
               <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
             </Avatar>
-            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-              <span className="text-white text-xs font-bold">Alterar</span>
-            </div>
+            <label
+              htmlFor="avatar-upload"
+              className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            >
+              {uploading ? (
+                <Loader2 className="h-6 w-6 text-white animate-spin" />
+              ) : (
+                <Camera className="h-6 w-6 text-white" />
+              )}
+            </label>
+            <input
+              id="avatar-upload"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarUpload}
+              disabled={uploading}
+            />
           </div>
           <div>
             <h1 className="text-3xl font-bold">{user.name}</h1>
-            <p className="text-muted-foreground">{user.email}</p>
+            <p className="text-muted-foreground">@{user.username}</p>
           </div>
         </div>
         <div className="flex gap-8 text-sm bg-secondary/30 p-4 rounded-2xl w-full md:w-auto justify-center">
@@ -116,27 +261,70 @@ export default function Profile() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSaveProfile} className="space-y-6">
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Nome Completo</Label>
-                    <Input id="name" defaultValue={user.name} />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="bio">Biografia</Label>
-                    <Textarea
-                      id="bio"
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      placeholder="Conte um pouco sobre você..."
-                      className="min-h-[100px]"
+              <Form {...profileForm}>
+                <form
+                  onSubmit={profileForm.handleSubmit(onProfileSubmit)}
+                  className="space-y-6"
+                >
+                  <div className="grid gap-4">
+                    <FormField
+                      control={profileForm.control}
+                      name="username"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Username</FormLabel>
+                          <FormControl>
+                            <Input placeholder="seu_username" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Este é seu identificador único na plataforma.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={profileForm.control}
+                      name="full_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome Completo</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Seu Nome" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={profileForm.control}
+                      name="bio"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Biografia</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Conte um pouco sobre você..."
+                              className="min-h-[100px]"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
                   </div>
-                </div>
-                <Button type="submit" className="w-full md:w-auto">
-                  Salvar Alterações
-                </Button>
-              </form>
+                  <Button
+                    type="submit"
+                    className="w-full md:w-auto"
+                    disabled={profileForm.formState.isSubmitting || uploading}
+                  >
+                    {profileForm.formState.isSubmitting
+                      ? 'Salvando...'
+                      : 'Salvar Alterações'}
+                  </Button>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </TabsContent>
@@ -150,51 +338,82 @@ export default function Profile() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSaveProfile} className="space-y-4">
-                <div className="grid gap-2">
-                  <Label className="flex items-center gap-2">
-                    <Instagram size={16} /> Instagram
-                  </Label>
-                  <Input
-                    placeholder="@usuario"
-                    value={instagram}
-                    onChange={(e) => setInstagram(e.target.value)}
+              <Form {...socialForm}>
+                <form
+                  onSubmit={socialForm.handleSubmit(onSocialSubmit)}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={socialForm.control}
+                    name="instagram"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Instagram size={16} /> Instagram
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="@usuario" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div className="grid gap-2">
-                  <Label className="flex items-center gap-2">
-                    <Twitter size={16} /> Twitter
-                  </Label>
-                  <Input
-                    placeholder="@usuario"
-                    value={twitter}
-                    onChange={(e) => setTwitter(e.target.value)}
+                  <FormField
+                    control={socialForm.control}
+                    name="twitter"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Twitter size={16} /> Twitter
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="@usuario" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div className="grid gap-2">
-                  <Label className="flex items-center gap-2">
-                    <Linkedin size={16} /> LinkedIn
-                  </Label>
-                  <Input
-                    placeholder="URL do perfil"
-                    value={linkedin}
-                    onChange={(e) => setLinkedin(e.target.value)}
+                  <FormField
+                    control={socialForm.control}
+                    name="linkedin"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Linkedin size={16} /> LinkedIn
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="URL do perfil" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div className="grid gap-2">
-                  <Label className="flex items-center gap-2">
-                    <Globe size={16} /> Website
-                  </Label>
-                  <Input
-                    placeholder="https://..."
-                    value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
+                  <FormField
+                    control={socialForm.control}
+                    name="website"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Globe size={16} /> Website
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <Button type="submit" className="w-full md:w-auto">
-                  Salvar Redes Sociais
-                </Button>
-              </form>
+                  <Button
+                    type="submit"
+                    className="w-full md:w-auto"
+                    disabled={socialForm.formState.isSubmitting}
+                  >
+                    {socialForm.formState.isSubmitting
+                      ? 'Salvando...'
+                      : 'Salvar Redes Sociais'}
+                  </Button>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </TabsContent>
