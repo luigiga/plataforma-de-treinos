@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
 import { useAuth } from '@/context/AuthContext'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Search, UserPlus, UserCheck } from 'lucide-react'
+import { Search, UserPlus, UserCheck, ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 export default function Social() {
@@ -58,13 +59,20 @@ export default function Social() {
               className="border-none shadow-md hover:shadow-lg transition-shadow"
             >
               <CardContent className="p-6 flex items-center gap-4">
-                <Avatar className="h-16 w-16 border-2 border-primary/10">
-                  <AvatarImage src={publicUser.avatar} />
-                  <AvatarFallback>{publicUser.name.charAt(0)}</AvatarFallback>
-                </Avatar>
+                <Link to={`/profile/${publicUser.username}`}>
+                  <Avatar className="h-16 w-16 border-2 border-primary/10 hover:border-primary/30 transition-colors">
+                    <AvatarImage src={publicUser.avatar} />
+                    <AvatarFallback>{publicUser.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                </Link>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold truncate">{publicUser.name}</h3>
+                    <Link
+                      to={`/profile/${publicUser.username}`}
+                      className="font-bold truncate hover:text-primary transition-colors"
+                    >
+                      {publicUser.name}
+                    </Link>
                     <Badge
                       variant={
                         publicUser.role === 'trainer' ? 'default' : 'secondary'
@@ -77,24 +85,36 @@ export default function Social() {
                   <p className="text-sm text-muted-foreground truncate mb-3">
                     {publicUser.bio || 'Sem biografia.'}
                   </p>
-                  {user && (
+                  <div className="flex gap-2">
+                    {user && (
+                      <Button
+                        size="sm"
+                        variant={isFollowed ? 'outline' : 'default'}
+                        className="flex-1 h-8"
+                        onClick={() => handleFollowToggle(publicUser.id)}
+                      >
+                        {isFollowed ? (
+                          <>
+                            <UserCheck className="mr-2 h-3 w-3" /> Seguindo
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="mr-2 h-3 w-3" /> Seguir
+                          </>
+                        )}
+                      </Button>
+                    )}
                     <Button
                       size="sm"
-                      variant={isFollowed ? 'outline' : 'default'}
-                      className="w-full h-8"
-                      onClick={() => handleFollowToggle(publicUser.id)}
+                      variant="ghost"
+                      className="h-8 px-2"
+                      asChild
                     >
-                      {isFollowed ? (
-                        <>
-                          <UserCheck className="mr-2 h-3 w-3" /> Seguindo
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="mr-2 h-3 w-3" /> Seguir
-                        </>
-                      )}
+                      <Link to={`/profile/${publicUser.username}`}>
+                        <ExternalLink className="h-4 w-4" />
+                      </Link>
                     </Button>
-                  )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

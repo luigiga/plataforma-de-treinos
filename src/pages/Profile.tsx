@@ -42,6 +42,7 @@ import { ShareProfileDialog } from '@/components/ShareProfileDialog'
 const profileSchema = z.object({
   username: z
     .string()
+    .trim()
     .min(3, 'Username deve ter pelo menos 3 caracteres')
     .regex(
       /^[a-zA-Z0-9_]+$/,
@@ -59,7 +60,7 @@ const socialSchema = z.object({
 })
 
 export default function Profile() {
-  const { user, updateUser } = useAuth()
+  const { user, updateUser, checkUsernameAvailability } = useAuth()
   const { following } = useData()
   const [uploading, setUploading] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -143,6 +144,17 @@ export default function Profile() {
 
   const onProfileSubmit = async (data: z.infer<typeof profileSchema>) => {
     try {
+      // Check username availability if changed
+      if (data.username !== user.username) {
+        const isAvailable = await checkUsernameAvailability(data.username)
+        if (!isAvailable) {
+          profileForm.setError('username', {
+            message: 'Este nome de usuário já está em uso.',
+          })
+          return
+        }
+      }
+
       const updates: any = {
         username: data.username,
         full_name: data.full_name,
@@ -157,7 +169,7 @@ export default function Profile() {
       if (error) throw error
     } catch (error: any) {
       console.error(error)
-      // Error is already handled in updateUser with toast, but we can add specific handling here if needed
+      // Error is already handled in updateUser with toast
     }
   }
 

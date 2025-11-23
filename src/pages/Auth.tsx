@@ -33,6 +33,7 @@ const registerSchema = z
   .object({
     username: z
       .string()
+      .trim()
       .min(3, 'Username deve ter pelo menos 3 caracteres')
       .regex(
         /^[a-zA-Z0-9_]+$/,
@@ -223,7 +224,11 @@ export default function Auth() {
                       <FormItem>
                         <FormLabel>Username</FormLabel>
                         <FormControl>
-                          <Input placeholder="seu_username" {...field} />
+                          <Input
+                            placeholder="seu_username"
+                            autoComplete="username"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

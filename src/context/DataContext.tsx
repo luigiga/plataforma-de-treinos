@@ -7,7 +7,6 @@ import React, {
   useEffect,
 } from 'react'
 import { toast } from 'sonner'
-import { logger } from '@/lib/logger'
 import { SocialLinks } from './AuthContext'
 import { supabase } from '@/lib/supabase/client'
 
@@ -70,6 +69,7 @@ export interface Notification {
 
 export interface PublicUser {
   id: string
+  username: string
   name: string
   role: 'subscriber' | 'trainer'
   avatar: string
@@ -211,6 +211,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         setPublicUsers(
           data.map((p) => ({
             id: p.id,
+            username: p.username || '',
             name: p.full_name || p.username,
             role: p.role as 'subscriber' | 'trainer',
             avatar: p.avatar_url,
