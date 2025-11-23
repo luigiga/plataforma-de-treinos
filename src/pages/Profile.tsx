@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/form'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { ShareProfileDialog } from '@/components/ShareProfileDialog'
 
 const profileSchema = z.object({
   username: z
@@ -211,15 +212,22 @@ export default function Profile() {
             <p className="text-muted-foreground">@{user.username}</p>
           </div>
         </div>
-        <div className="flex gap-8 text-sm bg-secondary/30 p-4 rounded-2xl w-full md:w-auto justify-center">
-          <div className="text-center">
-            <p className="font-bold text-2xl text-primary">{followingCount}</p>
-            <p className="text-muted-foreground">Seguindo</p>
+        <div className="flex flex-col items-center gap-4 w-full md:w-auto">
+          <div className="flex gap-8 text-sm bg-secondary/30 p-4 rounded-2xl w-full md:w-auto justify-center">
+            <div className="text-center">
+              <p className="font-bold text-2xl text-primary">
+                {followingCount}
+              </p>
+              <p className="text-muted-foreground">Seguindo</p>
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-2xl text-primary">
+                {followersCount}
+              </p>
+              <p className="text-muted-foreground">Seguidores</p>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="font-bold text-2xl text-primary">{followersCount}</p>
-            <p className="text-muted-foreground">Seguidores</p>
-          </div>
+          {user.username && <ShareProfileDialog username={user.username} />}
         </div>
       </div>
 

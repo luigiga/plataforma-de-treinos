@@ -19,6 +19,7 @@ const WorkoutDetails = React.lazy(() => import('./pages/WorkoutDetails'))
 const TrainerDashboard = React.lazy(() => import('./pages/TrainerDashboard'))
 const CreateEditWorkout = React.lazy(() => import('./pages/CreateEditWorkout'))
 const Profile = React.lazy(() => import('./pages/Profile'))
+const PublicProfile = React.lazy(() => import('./pages/PublicProfile'))
 const ProgressHistory = React.lazy(() => import('./pages/ProgressHistory'))
 const Social = React.lazy(() => import('./pages/Social'))
 const NotFound = React.lazy(() => import('./pages/NotFound'))
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/create-workout" element={<CreateEditWorkout />} />
               <Route path="/edit-workout/:id" element={<CreateEditWorkout />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/profile/:username" element={<PublicProfile />} />
               <Route path="/progress" element={<ProgressHistory />} />
               <Route path="/social" element={<Social />} />
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
