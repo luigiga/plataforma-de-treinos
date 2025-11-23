@@ -24,6 +24,9 @@ import {
   Globe,
   Camera,
   Loader2,
+  Trash2,
+  Check,
+  X,
 } from 'lucide-react'
 import { Gamification } from '@/components/Gamification'
 import {
@@ -38,6 +41,7 @@ import {
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { ShareProfileDialog } from '@/components/ShareProfileDialog'
+import { useDebounce } from '@/hooks/use-debounce'
 
 const profileSchema = z.object({
   username: z
@@ -65,6 +69,12 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
+  // Username availability state
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
+    null,
+  )
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
+
   const profileForm = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -84,6 +94,9 @@ export default function Profile() {
     },
   })
 
+  const watchedUsername = profileForm.watch('username')
+  const debouncedUsername = useDebounce(watchedUsername, 500)
+
   useEffect(() => {
     if (user) {
       profileForm.reset({
@@ -100,6 +113,48 @@ export default function Profile() {
       setAvatarPreview(user.avatar || null)
     }
   }, [user, profileForm, socialForm])
+
+  // Real-time username check
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (!debouncedUsername || debouncedUsername.length < 3) {
+        setUsernameAvailable(null)
+        return
+      }
+
+      if (debouncedUsername === user?.username) {
+        setUsernameAvailable(null)
+        return
+      }
+
+      const regex = /^[a-zA-Z0-9_]+$/
+      if (!regex.test(debouncedUsername)) {
+        setUsernameAvailable(null)
+        return
+      }
+
+      setIsCheckingUsername(true)
+      const isAvailable = await checkUsernameAvailability(debouncedUsername)
+      setUsernameAvailable(isAvailable)
+      setIsCheckingUsername(false)
+
+      if (!isAvailable) {
+        profileForm.setError('username', {
+          type: 'manual',
+          message: 'Nome de usuário indisponível.',
+        })
+      } else {
+        profileForm.clearErrors('username')
+      }
+    }
+
+    checkAvailability()
+  }, [
+    debouncedUsername,
+    checkUsernameAvailability,
+    profileForm,
+    user?.username,
+  ])
 
   if (!user)
     return (
@@ -134,7 +189,11 @@ export default function Profile() {
       } = supabase.storage.from('avatars').getPublicUrl(fileName)
 
       setAvatarPreview(publicUrl)
-      toast.success('Imagem carregada! Clique em Salvar para confirmar.')
+
+      // Update profile immediately
+      await updateUser({ avatar: publicUrl })
+
+      toast.success('Foto de perfil atualizada!')
     } catch (error: any) {
       toast.error('Erro no upload: ' + error.message)
     } finally {
@@ -142,17 +201,36 @@ export default function Profile() {
     }
   }
 
+  const handleAvatarRemove = async () => {
+    try {
+      setUploading(true)
+
+      // Try to delete from storage if we can parse the path
+      if (user.avatar) {
+        const urlParts = user.avatar.split('/avatars/')
+        if (urlParts.length > 1) {
+          const path = urlParts[1]
+          await supabase.storage.from('avatars').remove([path])
+        }
+      }
+
+      await updateUser({ avatar: '' })
+      setAvatarPreview(null)
+      toast.success('Foto de perfil removida.')
+    } catch (error: any) {
+      toast.error('Erro ao remover foto: ' + error.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const onProfileSubmit = async (data: z.infer<typeof profileSchema>) => {
     try {
-      // Check username availability if changed
-      if (data.username !== user.username) {
-        const isAvailable = await checkUsernameAvailability(data.username)
-        if (!isAvailable) {
-          profileForm.setError('username', {
-            message: 'Este nome de usuário já está em uso.',
-          })
-          return
-        }
+      if (usernameAvailable === false) {
+        profileForm.setError('username', {
+          message: 'Este nome de usuário já está em uso.',
+        })
+        return
       }
 
       const updates: any = {
@@ -161,15 +239,10 @@ export default function Profile() {
         bio: data.bio,
       }
 
-      if (avatarPreview && avatarPreview !== user.avatar) {
-        updates.avatar = avatarPreview
-      }
-
       const { error } = await updateUser(updates)
       if (error) throw error
     } catch (error: any) {
       console.error(error)
-      // Error is already handled in updateUser with toast
     }
   }
 
@@ -200,16 +273,30 @@ export default function Profile() {
               <AvatarImage src={avatarPreview || user.avatar} />
               <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
             </Avatar>
-            <label
-              htmlFor="avatar-upload"
-              className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-            >
-              {uploading ? (
-                <Loader2 className="h-6 w-6 text-white animate-spin" />
-              ) : (
-                <Camera className="h-6 w-6 text-white" />
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full gap-2">
+              <label
+                htmlFor="avatar-upload"
+                className="cursor-pointer p-2 hover:bg-white/20 rounded-full transition-colors"
+                title="Alterar foto"
+              >
+                {uploading ? (
+                  <Loader2 className="h-5 w-5 text-white animate-spin" />
+                ) : (
+                  <Camera className="h-5 w-5 text-white" />
+                )}
+              </label>
+              {avatarPreview && (
+                <button
+                  type="button"
+                  onClick={handleAvatarRemove}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                  title="Remover foto"
+                  disabled={uploading}
+                >
+                  <Trash2 className="h-5 w-5 text-destructive" />
+                </button>
               )}
-            </label>
+            </div>
             <input
               id="avatar-upload"
               type="file"
@@ -293,13 +380,42 @@ export default function Profile() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Username</FormLabel>
-                          <FormControl>
-                            <Input placeholder="seu_username" {...field} />
-                          </FormControl>
+                          <div className="relative">
+                            <FormControl>
+                              <Input
+                                placeholder="seu_username"
+                                {...field}
+                                onChange={(e) => {
+                                  field.onChange(e)
+                                  if (usernameAvailable !== null)
+                                    setUsernameAvailable(null)
+                                }}
+                              />
+                            </FormControl>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              {isCheckingUsername && (
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              )}
+                              {!isCheckingUsername &&
+                                usernameAvailable === true && (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                )}
+                              {!isCheckingUsername &&
+                                usernameAvailable === false && (
+                                  <X className="h-4 w-4 text-destructive" />
+                                )}
+                            </div>
+                          </div>
                           <FormDescription>
                             Este é seu identificador único na plataforma.
                           </FormDescription>
                           <FormMessage />
+                          {usernameAvailable === true &&
+                            !profileForm.formState.errors.username && (
+                              <p className="text-xs text-green-500 font-medium mt-1">
+                                Nome de usuário disponível!
+                              </p>
+                            )}
                         </FormItem>
                       )}
                     />
@@ -337,7 +453,11 @@ export default function Profile() {
                   <Button
                     type="submit"
                     className="w-full md:w-auto"
-                    disabled={profileForm.formState.isSubmitting || uploading}
+                    disabled={
+                      profileForm.formState.isSubmitting ||
+                      uploading ||
+                      usernameAvailable === false
+                    }
                   >
                     {profileForm.formState.isSubmitting
                       ? 'Salvando...'

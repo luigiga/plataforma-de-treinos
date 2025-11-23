@@ -171,12 +171,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           },
         },
       })
+
       if (error) {
         toast.error(error.message)
         return { data: authData, error }
       } else {
         if (authData.session) {
           toast.success('Conta criada com sucesso!')
+
+          // Trigger welcome email asynchronously
+          supabase.functions
+            .invoke('send-welcome-email', {
+              body: {
+                email: email,
+                name: data.name || data.username || 'User',
+                username: data.username || 'user',
+              },
+            })
+            .then(({ error }) => {
+              if (error) {
+                console.error('Failed to send welcome email:', error)
+              }
+            })
         } else {
           toast.success('Conta criada! Verifique seu email para confirmar.')
         }
