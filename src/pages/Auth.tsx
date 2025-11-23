@@ -31,6 +31,13 @@ const loginSchema = z.object({
 
 const registerSchema = z
   .object({
+    username: z
+      .string()
+      .min(3, 'Username deve ter pelo menos 3 caracteres')
+      .regex(
+        /^[a-zA-Z0-9_]+$/,
+        'Username deve conter apenas letras, números e underline',
+      ),
     name: z.string().min(2, 'Nome muito curto'),
     email: z.string().email('Email inválido'),
     password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
@@ -46,7 +53,7 @@ export default function Auth() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, register, user } = useAuth()
+  const { login, register, user, checkUsernameAvailability } = useAuth()
 
   // Determine default tab based on path or query param
   let defaultTab = searchParams.get('tab')
@@ -76,6 +83,7 @@ export default function Auth() {
   const registerForm = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      username: '',
       name: '',
       email: '',
       password: '',
@@ -94,7 +102,16 @@ export default function Auth() {
   }
 
   async function onRegister(data: z.infer<typeof registerSchema>) {
+    const isAvailable = await checkUsernameAvailability(data.username)
+    if (!isAvailable) {
+      registerForm.setError('username', {
+        message: 'Este nome de usuário já está em uso.',
+      })
+      return
+    }
+
     const { error } = await register(data.email, data.password, {
+      username: data.username,
       name: data.name,
       role: data.isTrainer ? 'trainer' : 'subscriber',
       avatar: `https://img.usecurling.com/ppl/medium?gender=${Math.random() > 0.5 ? 'male' : 'female'}`,
@@ -199,6 +216,19 @@ export default function Auth() {
                   onSubmit={registerForm.handleSubmit(onRegister)}
                   className="space-y-4"
                 >
+                  <FormField
+                    control={registerForm.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Username</FormLabel>
+                        <FormControl>
+                          <Input placeholder="seu_username" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={registerForm.control}
                     name="name"

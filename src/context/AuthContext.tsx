@@ -55,6 +55,7 @@ interface AuthContextType {
   updateUser: (data: Partial<User>) => Promise<{ error: any }>
   deleteUser: (id: string) => Promise<void>
   toggleUserStatus: (id: string) => Promise<void>
+  checkUsernameAvailability: (username: string) => Promise<boolean>
   loading: boolean
 }
 
@@ -162,6 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         password,
         options: {
           data: {
+            username: data.username,
             full_name: data.name,
             role: data.role,
             avatar_url: data.avatar,
@@ -287,6 +289,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     [allUsers],
   )
 
+  const checkUsernameAvailability = useCallback(async (username: string) => {
+    try {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('username', { count: 'exact', head: true })
+        .eq('username', username)
+
+      if (error) {
+        console.error('Error checking username:', error)
+        return false
+      }
+      return count === 0
+    } catch (error) {
+      console.error('Error checking username:', error)
+      return false
+    }
+  }, [])
+
   const value = useMemo(
     () => ({
       user,
@@ -298,6 +318,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       updateUser,
       deleteUser,
       toggleUserStatus,
+      checkUsernameAvailability,
       loading,
     }),
     [
@@ -309,6 +330,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       updateUser,
       deleteUser,
       toggleUserStatus,
+      checkUsernameAvailability,
       loading,
     ],
   )
