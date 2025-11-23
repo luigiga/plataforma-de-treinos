@@ -45,12 +45,16 @@ interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   allUsers: User[]
-  login: (email: string, password: string, role: UserRole) => Promise<boolean>
-  register: (data: Partial<User>) => void
-  logout: () => void
+  login: (email: string, password: string) => Promise<{ error: any }>
+  register: (
+    email: string,
+    password: string,
+    data: Partial<User>,
+  ) => Promise<{ error: any }>
+  logout: () => Promise<void>
   updateUser: (data: Partial<User>) => Promise<{ error: any }>
-  deleteUser: (id: string) => void
-  toggleUserStatus: (id: string) => void
+  deleteUser: (id: string) => Promise<void>
+  toggleUserStatus: (id: string) => Promise<void>
   loading: boolean
 }
 
@@ -136,44 +140,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [])
 
   const login = useCallback(
-    async (
-      email: string,
-      password: string,
-      _role: UserRole,
-    ): Promise<boolean> => {
+    async (email: string, password: string): Promise<{ error: any }> => {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
       if (error) {
         toast.error(error.message)
-        return false
+        return { error }
       }
       toast.success('Login realizado com sucesso!')
-      return true
+      return { error: null }
     },
     [],
   )
 
-  const register = useCallback(async (data: Partial<User>) => {
-    const { error } = await supabase.auth.signUp({
-      email: data.email!,
-      password: 'password123', // In a real app, password should come from form
-      options: {
-        data: {
-          full_name: data.name,
-          role: data.role,
-          avatar_url: data.avatar,
-          bio: data.bio,
+  const register = useCallback(
+    async (email: string, password: string, data: Partial<User>) => {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: data.name,
+            role: data.role,
+            avatar_url: data.avatar,
+            bio: data.bio,
+          },
         },
-      },
-    })
-    if (error) {
-      toast.error(error.message)
-    } else {
-      toast.success('Conta criada! Verifique seu email.')
-    }
-  }, [])
+      })
+      if (error) {
+        toast.error(error.message)
+        return { error }
+      } else {
+        toast.success('Conta criada! Verifique seu email.')
+        return { error: null }
+      }
+    },
+    [],
+  )
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut()
@@ -203,13 +208,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (data.badges) metadataUpdates.badges = data.badges
 
       if (Object.keys(metadataUpdates).length > 0) {
-        // We need to merge with existing metadata, but for now we assume the backend trigger or simple update handles it.
-        // Since we are updating a JSONB column, we should ideally fetch first or use a jsonb_set function.
-        // However, Supabase JS client updates the whole column if we pass an object.
-        // To be safe, we will merge in the client side with the current user metadata (which we don't have fully raw here, but we have the mapped user).
-        // Let's assume we just update what we have.
-        // A better approach for production is to use a stored procedure or careful patching.
-        // For this task, we'll construct the metadata object.
         updates.metadata = {
           socialLinks: data.socialLinks || user.socialLinks,
           preferences: data.preferences || user.preferences,

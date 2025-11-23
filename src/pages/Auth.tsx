@@ -23,13 +23,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
-  isTrainer: z.boolean().default(false),
 })
 
 const registerSchema = z
@@ -46,9 +44,9 @@ const registerSchema = z
   })
 
 export default function Auth() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { login, user } = useAuth()
+  const { login, register, user } = useAuth()
   const defaultTab = searchParams.get('tab') || 'login'
   const defaultRole = searchParams.get('role') === 'trainer'
 
@@ -62,7 +60,7 @@ export default function Auth() {
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '', isTrainer: false },
+    defaultValues: { email: '', password: '' },
   })
 
   const registerForm = useForm<z.infer<typeof registerSchema>>({
@@ -77,40 +75,33 @@ export default function Auth() {
   })
 
   async function onLogin(data: z.infer<typeof loginSchema>) {
-    const role = data.isTrainer ? 'trainer' : 'subscriber'
-    const success = await login(data.email, data.password, role)
-    if (!success)
+    const { error } = await login(data.email, data.password)
+    if (error) {
       loginForm.setError('root', {
         message: 'Falha no login. Verifique suas credenciais.',
       })
+    }
   }
 
   async function onRegister(data: z.infer<typeof registerSchema>) {
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          full_name: data.name,
-          role: data.isTrainer ? 'trainer' : 'subscriber',
-          avatar_url: `https://img.usecurling.com/ppl/medium?gender=${Math.random() > 0.5 ? 'male' : 'female'}`,
-        },
-      },
+    const { error } = await register(data.email, data.password, {
+      name: data.name,
+      role: data.isTrainer ? 'trainer' : 'subscriber',
+      avatar: `https://img.usecurling.com/ppl/medium?gender=${Math.random() > 0.5 ? 'male' : 'female'}`,
     })
 
-    if (error) {
-      toast.error(error.message)
-    } else {
-      toast.success('Conta criada! Você já pode fazer login.')
-      // Auto login or redirect to login tab
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      })
-      if (!loginError) {
-        // Navigation handled by useEffect
+    if (!error) {
+      // Auto login after registration
+      const { error: loginError } = await login(data.email, data.password)
+      if (loginError) {
+        toast.error('Erro ao fazer login automático. Tente entrar manualmente.')
+        setSearchParams({ tab: 'login' })
       }
     }
+  }
+
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value })
   }
 
   return (
@@ -125,7 +116,12 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue={defaultTab} className="w-full">
+          <Tabs
+            defaultValue={defaultTab}
+            value={defaultTab}
+            onValueChange={handleTabChange}
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-2 mb-6 bg-secondary/50 p-1 rounded-xl">
               <TabsTrigger value="login" className="rounded-lg">
                 Entrar
@@ -171,23 +167,6 @@ export default function Auth() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={loginForm.control}
-                    name="isTrainer"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border p-4 bg-secondary/20">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Sou Personal Trainer</FormLabel>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
                   {loginForm.formState.errors.root && (
                     <p className="text-sm text-destructive">
                       {loginForm.formState.errors.root.message}
@@ -196,8 +175,11 @@ export default function Auth() {
                   <Button
                     type="submit"
                     className="w-full rounded-xl h-12 text-lg"
+                    disabled={loginForm.formState.isSubmitting}
                   >
-                    Entrar
+                    {loginForm.formState.isSubmitting
+                      ? 'Entrando...'
+                      : 'Entrar'}
                   </Button>
                 </form>
               </Form>
@@ -289,8 +271,11 @@ export default function Auth() {
                   <Button
                     type="submit"
                     className="w-full rounded-xl h-12 text-lg"
+                    disabled={registerForm.formState.isSubmitting}
                   >
-                    Criar Conta
+                    {registerForm.formState.isSubmitting
+                      ? 'Criando Conta...'
+                      : 'Criar Conta'}
                   </Button>
                 </form>
               </Form>
