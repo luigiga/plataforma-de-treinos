@@ -11,30 +11,30 @@ import {
 
 export default function ForTrainers() {
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex flex-col w-full overflow-x-hidden">
       {/* Hero */}
-      <section className="py-20 bg-secondary/20">
+      <section className="py-16 md:py-20 bg-secondary/20">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">
+          <h1 className="text-3xl md:text-5xl font-bold mb-6">
             Potencialize sua Carreira
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             A ferramenta que faltava para você gerenciar seus alunos, vender
             seus treinos e escalar seu negócio fitness.
           </p>
-          <Button size="lg" className="h-12 px-8" asChild>
+          <Button size="lg" className="h-12 px-8 w-full sm:w-auto" asChild>
             <Link to="/auth?tab=register&role=trainer">Começar Agora</Link>
           </Button>
         </div>
       </section>
 
       {/* How it works */}
-      <section className="py-20">
+      <section className="py-16 md:py-20">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
             Como Funciona
           </h2>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             {[
               {
                 title: '1. Crie seu Perfil',
@@ -65,12 +65,12 @@ export default function ForTrainers() {
       </section>
 
       {/* Benefits */}
-      <section className="py-20 bg-secondary/20">
+      <section className="py-16 md:py-20 bg-secondary/20">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
             Por que se juntar a nós?
           </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 icon: DollarSign,
@@ -109,27 +109,33 @@ export default function ForTrainers() {
       </section>
 
       {/* FAQ */}
-      <section className="py-20 max-w-3xl mx-auto px-4 w-full">
-        <h2 className="text-3xl font-bold text-center mb-12">
+      <section className="py-16 md:py-20 max-w-3xl mx-auto px-4 w-full">
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
           Perguntas Frequentes
         </h2>
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="item-1">
-            <AccordionTrigger>Quanto custa para ser trainer?</AccordionTrigger>
+            <AccordionTrigger className="text-left">
+              Quanto custa para ser trainer?
+            </AccordionTrigger>
             <AccordionContent>
               O cadastro é gratuito. Cobramos apenas uma pequena taxa
               administrativa sobre as assinaturas geradas.
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="item-2">
-            <AccordionTrigger>Preciso de certificação?</AccordionTrigger>
+            <AccordionTrigger className="text-left">
+              Preciso de certificação?
+            </AccordionTrigger>
             <AccordionContent>
               Sim, prezamos pela qualidade e segurança. Solicitaremos
               comprovante de certificação profissional (CREF).
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="item-3">
-            <AccordionTrigger>Como recebo meus pagamentos?</AccordionTrigger>
+            <AccordionTrigger className="text-left">
+              Como recebo meus pagamentos?
+            </AccordionTrigger>
             <AccordionContent>
               Os pagamentos são transferidos mensalmente para sua conta bancária
               cadastrada.
@@ -138,9 +144,11 @@ export default function ForTrainers() {
         </Accordion>
       </section>
 
-      <section className="py-20 text-center">
-        <h2 className="text-3xl font-bold mb-6">Pronto para começar?</h2>
-        <Button size="lg" asChild>
+      <section className="py-16 md:py-20 text-center px-4">
+        <h2 className="text-2xl md:text-3xl font-bold mb-6">
+          Pronto para começar?
+        </h2>
+        <Button size="lg" className="w-full sm:w-auto" asChild>
           <Link to="/auth?tab=register&role=trainer">
             Criar Conta de Trainer
           </Link>

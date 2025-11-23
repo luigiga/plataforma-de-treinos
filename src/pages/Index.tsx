@@ -13,25 +13,25 @@ import {
 
 export default function Index() {
   return (
-    <div className="flex flex-col w-full">
-      <section className="relative py-20 lg:py-32 overflow-hidden">
+    <div className="flex flex-col w-full overflow-x-hidden">
+      <section className="relative py-12 md:py-20 lg:py-32 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent -z-10" />
         <div className="container mx-auto px-4 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8 text-center lg:text-left animate-fade-in-up">
-              <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-balance leading-tight">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            <div className="space-y-6 md:space-y-8 text-center lg:text-left animate-fade-in-up">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-balance leading-tight">
                 Transforme seu <span className="text-primary">Corpo</span>.{' '}
                 <br />
                 Eleve sua <span className="text-primary">Mente</span>.
               </h1>
-              <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 text-balance">
+              <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 text-balance">
                 A plataforma premium que conecta você à elite dos personal
                 trainers. Design intuitivo, dados avançados e resultados reais.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start w-full sm:w-auto">
                 <Button
                   size="lg"
-                  className="text-lg px-8 h-14 rounded-full shadow-lg shadow-primary/25"
+                  className="text-lg px-8 h-12 md:h-14 rounded-full shadow-lg shadow-primary/25 w-full sm:w-auto"
                   asChild
                 >
                   <Link to="/auth?tab=register&role=subscriber">
@@ -41,14 +41,14 @@ export default function Index() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="text-lg px-8 h-14 rounded-full border-2"
+                  className="text-lg px-8 h-12 md:h-14 rounded-full border-2 w-full sm:w-auto"
                   asChild
                 >
                   <Link to="/trainers">Sou Personal Trainer</Link>
                 </Button>
               </div>
             </div>
-            <div className="relative animate-fade-in lg:animate-slide-up delay-200">
+            <div className="relative animate-fade-in lg:animate-slide-up delay-200 mt-8 lg:mt-0">
               <div className="relative rounded-3xl overflow-hidden shadow-2xl transform hover:scale-[1.02] transition-transform duration-500 border-4 border-white dark:border-gray-800">
                 <img
                   src="https://img.usecurling.com/p/800/600?q=fitness%20training"
@@ -73,18 +73,18 @@ export default function Index() {
         </div>
       </section>
 
-      <section className="py-24 bg-secondary/30">
+      <section className="py-16 md:py-24 bg-secondary/30">
         <div className="container mx-auto px-4">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4">
+          <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
+            <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold mb-4">
               Treinos Personalizados
             </h2>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-muted-foreground text-base md:text-lg">
               Uma biblioteca diversificada criada por especialistas.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             {[
               {
                 icon: PlayCircle,
@@ -121,9 +121,9 @@ export default function Index() {
         </div>
       </section>
 
-      <section className="py-24">
+      <section className="py-16 md:py-24">
         <div className="container mx-auto px-4">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 md:gap-16 items-center">
             <div className="order-2 lg:order-1 relative">
               <img
                 src="https://img.usecurling.com/p/600/800?q=personal%20trainer"
@@ -131,16 +131,16 @@ export default function Index() {
                 className="rounded-3xl shadow-2xl w-full max-w-md mx-auto lg:mx-0 border-4 border-white dark:border-gray-800"
               />
             </div>
-            <div className="order-1 lg:order-2 space-y-8">
+            <div className="order-1 lg:order-2 space-y-6 md:space-y-8 text-center lg:text-left">
               <h2 className="text-3xl md:text-5xl font-bold">
                 Para Profissionais
               </h2>
-              <p className="text-lg text-muted-foreground">
+              <p className="text-base md:text-lg text-muted-foreground">
                 A plataforma ideal para personal trainers que querem escalar seu
                 negócio. Gerencie alunos, analise métricas e monetize seu
                 conteúdo.
               </p>
-              <ul className="space-y-4">
+              <ul className="space-y-4 inline-block text-left">
                 {[
                   'Publique treinos em minutos',
                   'Dashboard analítico completo',
@@ -154,30 +154,36 @@ export default function Index() {
                   </li>
                 ))}
               </ul>
-              <Button size="lg" className="rounded-full px-8" asChild>
-                <Link to="/auth?tab=register&role=trainer">
-                  Cadastrar Perfil Profissional
-                </Link>
-              </Button>
+              <div className="pt-4">
+                <Button
+                  size="lg"
+                  className="rounded-full px-8 w-full sm:w-auto"
+                  asChild
+                >
+                  <Link to="/auth?tab=register&role=trainer">
+                    Cadastrar Perfil Profissional
+                  </Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-24 bg-secondary/30">
+      <section className="py-16 md:py-24 bg-secondary/30">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
             O que dizem nossos usuários
           </h2>
-          <Carousel className="w-full max-w-4xl mx-auto">
+          <Carousel className="w-full max-w-4xl mx-auto px-4 md:px-12">
             <CarouselContent>
               {[1, 2, 3].map((_, index) => (
                 <CarouselItem
                   key={index}
-                  className="md:basis-1/2 lg:basis-1/2 p-4"
+                  className="md:basis-1/2 lg:basis-1/2 p-2 md:p-4"
                 >
                   <Card className="h-full border-none shadow-md bg-card">
-                    <CardContent className="p-8 flex flex-col gap-4">
+                    <CardContent className="p-6 md:p-8 flex flex-col gap-4">
                       <div className="flex items-center gap-4">
                         <Avatar>
                           <AvatarImage
@@ -192,7 +198,7 @@ export default function Index() {
                           </p>
                         </div>
                       </div>
-                      <p className="text-muted-foreground italic">
+                      <p className="text-muted-foreground italic text-sm md:text-base">
                         "A interface é linda e os gráficos de progresso me
                         motivam muito!"
                       </p>
@@ -201,26 +207,26 @@ export default function Index() {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious />
-            <CarouselNext />
+            <CarouselPrevious className="hidden md:flex" />
+            <CarouselNext className="hidden md:flex" />
           </Carousel>
         </div>
       </section>
 
-      <section className="py-24 bg-primary text-white relative overflow-hidden">
+      <section className="py-16 md:py-24 bg-primary text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-        <div className="container mx-auto px-4 text-center space-y-8 relative z-10">
-          <h2 className="text-4xl md:text-5xl font-bold">
+        <div className="container mx-auto px-4 text-center space-y-6 md:space-y-8 relative z-10">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold">
             Comece Sua Jornada Hoje
           </h2>
-          <p className="text-xl text-white/90 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto">
             Junte-se à comunidade fitness mais exclusiva da web.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4 w-full sm:w-auto">
             <Button
               size="lg"
               variant="secondary"
-              className="text-primary font-bold h-14 px-8 rounded-full"
+              className="text-primary font-bold h-12 md:h-14 px-8 rounded-full w-full sm:w-auto"
               asChild
             >
               <Link to="/auth?tab=register&role=subscriber">Quero Treinar</Link>
@@ -228,7 +234,7 @@ export default function Index() {
             <Button
               size="lg"
               variant="outline"
-              className="bg-transparent text-white border-white hover:bg-white/10 h-14 px-8 rounded-full"
+              className="bg-transparent text-white border-white hover:bg-white/10 h-12 md:h-14 px-8 rounded-full w-full sm:w-auto"
               asChild
             >
               <Link to="/auth?tab=register&role=trainer">Sou Profissional</Link>

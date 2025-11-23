@@ -40,11 +40,11 @@ export function TrainerMessages() {
   }
 
   return (
-    <div className="grid md:grid-cols-3 gap-4 h-[600px] animate-fade-in">
-      <Card className="md:col-span-1">
-        <CardContent className="p-0">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[600px] animate-fade-in">
+      <Card className="md:col-span-1 h-[200px] md:h-auto">
+        <CardContent className="p-0 h-full flex flex-col">
           <div className="p-4 border-b font-semibold">Conversas</div>
-          <ScrollArea className="h-[540px]">
+          <ScrollArea className="flex-1">
             {conversations.map((contactId) => {
               const contact = publicUsers.find((u) => u.id === contactId)
               if (!contact) return null
@@ -76,7 +76,7 @@ export function TrainerMessages() {
         </CardContent>
       </Card>
 
-      <Card className="md:col-span-2 flex flex-col">
+      <Card className="md:col-span-2 flex flex-col h-[400px] md:h-auto">
         <CardContent className="flex-1 p-0 flex flex-col h-full">
           {selectedUserId ? (
             <>

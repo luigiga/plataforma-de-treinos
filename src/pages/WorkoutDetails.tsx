@@ -38,7 +38,7 @@ export default function WorkoutDetails() {
   const handleStartWorkout = () => toast.success('Treino iniciado! Bom treino!')
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl animate-fade-in">
+    <div className="container mx-auto px-4 py-6 md:py-8 max-w-5xl animate-fade-in">
       <Button
         variant="ghost"
         className="mb-4 pl-0 hover:pl-2 transition-all"
@@ -47,14 +47,14 @@ export default function WorkoutDetails() {
         <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
       </Button>
 
-      <div className="relative h-[300px] md:h-[450px] rounded-3xl overflow-hidden mb-8 shadow-ios-float">
+      <div className="relative h-[250px] md:h-[450px] rounded-3xl overflow-hidden mb-8 shadow-ios-float">
         <img
           src={workout.image}
           alt={workout.title}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-8 text-white">
-          <div className="flex gap-2 mb-4">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-6 md:p-8 text-white">
+          <div className="flex flex-wrap gap-2 mb-4">
             <Badge className="bg-primary text-white border-none">
               {workout.difficulty}
             </Badge>
@@ -73,13 +73,13 @@ export default function WorkoutDetails() {
               </Badge>
             ))}
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-2">
+          <h1 className="text-3xl md:text-5xl font-bold mb-2">
             {workout.title}
           </h1>
-          <p className="text-lg text-gray-200 mb-6">
+          <p className="text-base md:text-lg text-gray-200 mb-6">
             por {workout.trainerName}
           </p>
-          <div className="flex items-center gap-6 text-sm font-medium">
+          <div className="flex flex-wrap items-center gap-4 md:gap-6 text-sm font-medium">
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full">
               <Clock size={18} /> {workout.duration} min
             </div>
@@ -90,8 +90,8 @@ export default function WorkoutDetails() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="order-2 md:order-1 md:col-span-2 space-y-10">
           <section>
             <h2 className="text-2xl font-bold mb-4">Sobre o Treino</h2>
             <p className="text-muted-foreground leading-relaxed text-lg">
@@ -108,7 +108,7 @@ export default function WorkoutDetails() {
                   className="overflow-hidden border-none shadow-elevation"
                 >
                   <CardContent className="p-0 flex flex-col sm:flex-row">
-                    <div className="bg-secondary w-full sm:w-32 h-auto min-h-[8rem] flex items-center justify-center text-muted-foreground font-bold text-2xl shrink-0 relative group">
+                    <div className="bg-secondary w-full sm:w-32 h-40 sm:h-auto min-h-[8rem] flex items-center justify-center text-muted-foreground font-bold text-2xl shrink-0 relative group">
                       {exercise.videoUrl ? (
                         <Dialog>
                           <DialogTrigger asChild>
@@ -196,7 +196,7 @@ export default function WorkoutDetails() {
           </section>
         </div>
 
-        <div className="md:col-span-1">
+        <div className="order-1 md:order-2 md:col-span-1">
           <Card className="sticky top-24 border-none shadow-ios-float">
             <CardContent className="p-6 space-y-6">
               <Button

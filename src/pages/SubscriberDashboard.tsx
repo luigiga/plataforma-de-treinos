@@ -69,27 +69,29 @@ export default function SubscriberDashboard() {
   ]
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+    <div className="container mx-auto px-4 py-6 md:py-8 animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Olá, {user?.name}!</h1>
-          <p className="text-muted-foreground">Pronto para o treino de hoje?</p>
+          <h1 className="text-2xl md:text-3xl font-bold">Olá, {user?.name}!</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
+            Pronto para o treino de hoje?
+          </p>
         </div>
-        <div className="flex gap-4 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
           <Button
             variant="outline"
             asChild
-            className="hidden md:flex shadow-sm"
+            className="w-full sm:w-auto shadow-sm order-2 sm:order-1"
           >
             <Link to="/progress">
               <TrendingUp className="mr-2 h-4 w-4" /> Meu Progresso
             </Link>
           </Button>
-          <div className="relative w-full md:w-auto">
+          <div className="relative w-full sm:w-auto order-1 sm:order-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Buscar treinos..."
-              className="pl-10 w-full md:w-[300px] rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary transition-all"
+              className="pl-10 w-full sm:w-[300px] rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -101,15 +103,17 @@ export default function SubscriberDashboard() {
         <section className="mb-10">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="text-yellow-500 fill-yellow-500" />
-            <h2 className="text-xl font-bold">Recomendado para Você</h2>
+            <h2 className="text-lg md:text-xl font-bold">
+              Recomendado para Você
+            </h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {recommendedWorkouts.map((workout) => (
               <Link key={`rec-${workout.id}`} to={`/workout/${workout.id}`}>
                 <Card className="h-full border-none bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 transition-all duration-300 shadow-sm hover:shadow-md">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">{workout.title}</CardTitle>
-                    <div className="flex gap-2 mt-1">
+                    <div className="flex flex-wrap gap-2 mt-1">
                       {workout.category.map((c) => (
                         <Badge
                           key={c}
@@ -138,12 +142,12 @@ export default function SubscriberDashboard() {
         className="mb-8"
         onValueChange={setCategoryFilter}
       >
-        <TabsList className="w-full justify-start overflow-x-auto h-auto p-1 bg-transparent gap-2 no-scrollbar">
+        <TabsList className="w-full justify-start overflow-x-auto h-auto p-1 bg-transparent gap-2 no-scrollbar touch-pan-x">
           {categories.map((cat) => (
             <TabsTrigger
               key={cat}
               value={cat}
-              className="px-4 py-2 rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border bg-background shadow-sm"
+              className="px-4 py-2 rounded-full whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border bg-background shadow-sm flex-shrink-0"
             >
               {cat}
             </TabsTrigger>
@@ -151,7 +155,7 @@ export default function SubscriberDashboard() {
         </TabsList>
       </Tabs>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {filteredWorkouts.map((workout, index) => (
           <Link key={workout.id} to={`/workout/${workout.id}`}>
             <Card
@@ -174,7 +178,7 @@ export default function SubscriberDashboard() {
                 </div>
               </div>
               <CardHeader className="pb-2">
-                <CardTitle className="line-clamp-1 text-xl">
+                <CardTitle className="line-clamp-1 text-lg md:text-xl">
                   {workout.title}
                 </CardTitle>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

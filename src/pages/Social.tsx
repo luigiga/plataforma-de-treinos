@@ -31,7 +31,9 @@ export default function Social() {
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold mb-2">Comunidade Fitness</h1>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">
+          Comunidade Fitness
+        </h1>
         <p className="text-muted-foreground">
           Encontre treinadores e parceiros de treino.
         </p>
@@ -47,7 +49,7 @@ export default function Social() {
         />
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredUsers.map((publicUser) => {
           const isFollowed = user ? isFollowing(user.id, publicUser.id) : false
           return (

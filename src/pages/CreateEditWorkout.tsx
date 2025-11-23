@@ -129,7 +129,7 @@ export default function CreateEditWorkout() {
       >
         <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
       </Button>
-      <h1 className="text-3xl font-bold mb-8">
+      <h1 className="text-2xl md:text-3xl font-bold mb-8">
         {isEditing ? 'Editar Treino' : 'Criar Novo Treino'}
       </h1>
       <Form {...form}>
@@ -165,7 +165,7 @@ export default function CreateEditWorkout() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="duration"
@@ -272,15 +272,18 @@ export default function CreateEditWorkout() {
               />
             ))}
           </div>
-          <div className="flex justify-end gap-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => navigate('/trainer-dashboard')}
+              className="w-full sm:w-auto"
             >
               Cancelar
             </Button>
-            <Button type="submit">Salvar Treino</Button>
+            <Button type="submit" className="w-full sm:w-auto">
+              Salvar Treino
+            </Button>
           </div>
         </form>
       </Form>

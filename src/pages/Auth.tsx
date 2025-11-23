@@ -92,10 +92,12 @@ export default function Auth() {
   }
 
   return (
-    <div className="container mx-auto flex items-center justify-center min-h-[calc(100vh-140px)] py-10">
+    <div className="container mx-auto flex items-center justify-center min-h-[calc(100vh-140px)] py-6 md:py-10 px-4">
       <Card className="w-full max-w-md shadow-glass border-white/20 bg-white/50 backdrop-blur-md dark:bg-black/50">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Bem-vindo</CardTitle>
+          <CardTitle className="text-2xl md:text-3xl font-bold">
+            Bem-vindo
+          </CardTitle>
           <CardDescription>
             Entre ou crie sua conta para continuar
           </CardDescription>

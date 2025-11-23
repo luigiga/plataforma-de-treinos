@@ -20,6 +20,7 @@ export function Navbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10)
@@ -30,6 +31,7 @@ export function Navbar() {
   const handleLogout = () => {
     logout()
     navigate('/')
+    setIsMobileMenuOpen(false)
   }
 
   const navLinks = [
@@ -64,19 +66,19 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'glass-nav h-16' : 'bg-transparent h-20'}`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'glass-nav h-16' : 'bg-transparent h-16 md:h-20'}`}
     >
       <div className="container mx-auto px-4 h-full flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 group">
           <div className="bg-primary text-white p-2 rounded-xl transition-transform group-hover:scale-110 duration-300 shadow-lg shadow-primary/30">
             <Dumbbell size={20} />
           </div>
-          <span className="font-display font-bold text-xl tracking-tight text-foreground">
+          <span className="font-display font-bold text-lg md:text-xl tracking-tight text-foreground">
             FitPlatform
           </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-6 lg:gap-8">
           {navLinks
             .filter((link) => link.show)
             .map((link) => (
@@ -169,9 +171,9 @@ export function Navbar() {
           )}
         </div>
 
-        <div className="md:hidden flex items-center gap-4">
+        <div className="md:hidden flex items-center gap-2">
           {user && <Notifications />}
-          <Sheet>
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Menu className="h-6 w-6" />
@@ -186,7 +188,8 @@ export function Navbar() {
                       <Link
                         key={link.path}
                         to={link.path}
-                        className="text-lg font-medium text-foreground hover:text-primary transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={`text-lg font-medium transition-colors hover:text-primary ${location.pathname === link.path ? 'text-primary font-bold' : 'text-foreground'}`}
                       >
                         {link.name}
                       </Link>
@@ -197,7 +200,10 @@ export function Navbar() {
                     <>
                       <Button
                         variant="outline"
-                        onClick={() => navigate('/profile')}
+                        onClick={() => {
+                          navigate('/profile')
+                          setIsMobileMenuOpen(false)
+                        }}
                       >
                         Meu Perfil
                       </Button>
@@ -209,11 +215,19 @@ export function Navbar() {
                     <>
                       <Button
                         variant="outline"
-                        onClick={() => navigate('/auth?tab=login')}
+                        onClick={() => {
+                          navigate('/auth?tab=login')
+                          setIsMobileMenuOpen(false)
+                        }}
                       >
                         Entrar
                       </Button>
-                      <Button onClick={() => navigate('/auth?tab=register')}>
+                      <Button
+                        onClick={() => {
+                          navigate('/auth?tab=register')
+                          setIsMobileMenuOpen(false)
+                        }}
+                      >
                         Cadastrar
                       </Button>
                     </>

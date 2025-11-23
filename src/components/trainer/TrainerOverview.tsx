@@ -45,7 +45,7 @@ export function TrainerOverview({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -91,13 +91,13 @@ export function TrainerOverview({
         </Card>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="border-none shadow-elevation">
           <CardHeader>
             <CardTitle>Receita Semestral</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
+            <div className="h-[250px] md:h-[300px] w-full">
               <ChartContainer
                 config={{
                   revenue: {
@@ -142,7 +142,7 @@ export function TrainerOverview({
             <CardTitle>Crescimento de Alunos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
+            <div className="h-[250px] md:h-[300px] w-full">
               <ChartContainer
                 config={{
                   clients: { label: 'Alunos', color: 'hsl(var(--chart-2))' },

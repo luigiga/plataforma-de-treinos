@@ -38,14 +38,17 @@ export default function TrainerDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold">Painel do Treinador</h1>
           <p className="text-muted-foreground">
             Gerencie seus alunos e treinos em um só lugar.
           </p>
         </div>
-        <Button asChild className="shadow-lg shadow-primary/20">
+        <Button
+          asChild
+          className="shadow-lg shadow-primary/20 w-full sm:w-auto"
+        >
           <Link to="/create-workout">
             <Plus className="mr-2 h-4 w-4" /> Novo Treino
           </Link>
@@ -53,17 +56,17 @@ export default function TrainerDashboard() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-[600px] bg-secondary/30 p-1 rounded-xl">
-          <TabsTrigger value="overview" className="rounded-lg">
+        <TabsList className="flex flex-col sm:grid sm:grid-cols-4 w-full lg:w-[600px] bg-secondary/30 p-1 rounded-xl h-auto">
+          <TabsTrigger value="overview" className="rounded-lg w-full">
             Visão Geral
           </TabsTrigger>
-          <TabsTrigger value="clients" className="rounded-lg">
+          <TabsTrigger value="clients" className="rounded-lg w-full">
             Alunos
           </TabsTrigger>
-          <TabsTrigger value="workouts" className="rounded-lg">
+          <TabsTrigger value="workouts" className="rounded-lg w-full">
             Treinos
           </TabsTrigger>
-          <TabsTrigger value="messages" className="rounded-lg">
+          <TabsTrigger value="messages" className="rounded-lg w-full">
             Mensagens
           </TabsTrigger>
         </TabsList>

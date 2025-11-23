@@ -79,9 +79,11 @@ export default function SubscriptionPlans() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-20">
+    <div className="container mx-auto px-4 py-12 md:py-20">
       <div className="text-center max-w-2xl mx-auto mb-12">
-        <h1 className="text-4xl font-bold mb-4">Escolha seu Plano</h1>
+        <h1 className="text-3xl md:text-4xl font-bold mb-4">
+          Escolha seu Plano
+        </h1>
         <p className="text-muted-foreground mb-8">
           Invista em você com preços acessíveis e flexíveis.
         </p>
@@ -104,11 +106,11 @@ export default function SubscriptionPlans() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
         {plans.map((plan) => (
           <Card
             key={plan.name}
-            className={`relative flex flex-col ${plan.popular ? 'border-primary shadow-xl scale-105 z-10' : 'shadow-md'}`}
+            className={`relative flex flex-col ${plan.popular ? 'border-primary shadow-xl md:scale-105 z-10' : 'shadow-md'}`}
           >
             {plan.popular && (
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">

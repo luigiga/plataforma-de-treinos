@@ -43,9 +43,9 @@ export default function ProgressHistory() {
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <h1 className="text-3xl font-bold mb-8">Meu Progresso</h1>
+      <h1 className="text-2xl md:text-3xl font-bold mb-8">Meu Progresso</h1>
 
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
         <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -90,13 +90,13 @@ export default function ProgressHistory() {
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card className="border-none shadow-elevation">
           <CardHeader>
             <CardTitle>Duração dos Treinos (min)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
+            <div className="h-[250px] md:h-[300px] w-full">
               <ChartContainer
                 config={{
                   duration: { label: 'Duração', color: 'hsl(var(--primary))' },
@@ -134,7 +134,7 @@ export default function ProgressHistory() {
             <CardTitle>Consistência</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
+            <div className="h-[250px] md:h-[300px] w-full">
               <ChartContainer
                 config={{
                   duration: { label: 'Minutos', color: 'hsl(var(--chart-2))' },

@@ -98,9 +98,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
             <ShieldAlert className="text-primary" /> Painel Administrativo
           </h1>
           <p className="text-muted-foreground">
@@ -118,7 +118,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-6 mb-8 md:grid-cols-4">
+      <div className="grid gap-6 mb-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -234,106 +234,112 @@ export default function AdminDashboard() {
           <CardTitle>Gestão de Usuários</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Usuário</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Plano</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((u) => (
-                <TableRow key={u.id} className="hover:bg-secondary/30">
-                  <TableCell className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={u.avatar} />
-                      <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{u.name}</p>
-                      <p className="text-xs text-muted-foreground">{u.email}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={
-                        u.role === 'admin'
-                          ? 'border-primary text-primary'
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="min-w-[200px]">Usuário</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Plano</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((u) => (
+                  <TableRow key={u.id} className="hover:bg-secondary/30">
+                    <TableCell className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage src={u.avatar} />
+                        <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{u.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {u.email}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          u.role === 'admin'
+                            ? 'border-primary text-primary'
+                            : u.role === 'trainer'
+                              ? 'border-blue-500 text-blue-500'
+                              : ''
+                        }
+                      >
+                        {u.role === 'admin'
+                          ? 'Admin'
                           : u.role === 'trainer'
-                            ? 'border-blue-500 text-blue-500'
-                            : ''
-                      }
+                            ? 'Trainer'
+                            : 'Assinante'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          u.status === 'active' ? 'default' : 'secondary'
+                        }
+                        className={
+                          u.status === 'active'
+                            ? 'bg-green-500 hover:bg-green-600'
+                            : 'bg-gray-400 hover:bg-gray-500'
+                        }
+                      >
+                        {u.status === 'active' ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="capitalize">
+                      {u.plan || 'Free'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {u.id !== user.id && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setUserToToggle(u)}
+                              title={
+                                u.status === 'active' ? 'Desativar' : 'Ativar'
+                              }
+                            >
+                              {u.status === 'active' ? (
+                                <Ban className="h-4 w-4 text-orange-500" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setUserToDelete(u)}
+                              title="Excluir"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredUsers.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-center py-8 text-muted-foreground"
                     >
-                      {u.role === 'admin'
-                        ? 'Admin'
-                        : u.role === 'trainer'
-                          ? 'Trainer'
-                          : 'Assinante'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={u.status === 'active' ? 'default' : 'secondary'}
-                      className={
-                        u.status === 'active'
-                          ? 'bg-green-500 hover:bg-green-600'
-                          : 'bg-gray-400 hover:bg-gray-500'
-                      }
-                    >
-                      {u.status === 'active' ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="capitalize">
-                    {u.plan || 'Free'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {u.id !== user.id && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setUserToToggle(u)}
-                            title={
-                              u.status === 'active' ? 'Desativar' : 'Ativar'
-                            }
-                          >
-                            {u.status === 'active' ? (
-                              <Ban className="h-4 w-4 text-orange-500" />
-                            ) : (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setUserToDelete(u)}
-                            title="Excluir"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredUsers.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    Nenhum usuário encontrado.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                      Nenhum usuário encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

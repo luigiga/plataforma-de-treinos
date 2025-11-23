@@ -51,7 +51,7 @@ export default function Profile() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl animate-fade-in">
       <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-6">
-        <div className="flex items-center gap-6">
+        <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
           <div className="relative group">
             <Avatar className="h-24 w-24 border-4 border-background shadow-xl">
               <AvatarImage src={user.avatar} />
@@ -66,7 +66,7 @@ export default function Profile() {
             <p className="text-muted-foreground">{user.email}</p>
           </div>
         </div>
-        <div className="flex gap-8 text-sm bg-secondary/30 p-4 rounded-2xl">
+        <div className="flex gap-8 text-sm bg-secondary/30 p-4 rounded-2xl w-full md:w-auto justify-center">
           <div className="text-center">
             <p className="font-bold text-2xl text-primary">{followingCount}</p>
             <p className="text-muted-foreground">Seguindo</p>
@@ -79,7 +79,7 @@ export default function Profile() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8 bg-secondary/30 p-1 rounded-xl">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8 bg-secondary/30 p-1 rounded-xl h-auto">
           <TabsTrigger value="profile" className="rounded-lg">
             Perfil
           </TabsTrigger>
@@ -127,7 +127,9 @@ export default function Profile() {
                     />
                   </div>
                 </div>
-                <Button type="submit">Salvar Alterações</Button>
+                <Button type="submit" className="w-full md:w-auto">
+                  Salvar Alterações
+                </Button>
               </form>
             </CardContent>
           </Card>
@@ -183,7 +185,9 @@ export default function Profile() {
                     onChange={(e) => setWebsite(e.target.value)}
                   />
                 </div>
-                <Button type="submit">Salvar Redes Sociais</Button>
+                <Button type="submit" className="w-full md:w-auto">
+                  Salvar Redes Sociais
+                </Button>
               </form>
             </CardContent>
           </Card>
@@ -208,7 +212,7 @@ export default function Profile() {
                 <Label htmlFor="new-password">Nova Senha</Label>
                 <Input id="new-password" type="password" />
               </div>
-              <Button>Atualizar Senha</Button>
+              <Button className="w-full md:w-auto">Atualizar Senha</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -222,7 +226,7 @@ export default function Profile() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-primary/5 border border-primary/20 p-6 rounded-xl flex justify-between items-center">
+              <div className="bg-primary/5 border border-primary/20 p-6 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                   <p className="font-bold text-lg text-primary">
                     Plano Premium
@@ -235,9 +239,13 @@ export default function Profile() {
                   Ativo
                 </span>
               </div>
-              <div className="flex gap-4">
-                <Button variant="outline">Gerenciar Pagamento</Button>
-                <Button variant="destructive">Cancelar Assinatura</Button>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  Gerenciar Pagamento
+                </Button>
+                <Button variant="destructive" className="w-full sm:w-auto">
+                  Cancelar Assinatura
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -259,7 +267,9 @@ export default function Profile() {
                   placeholder="Ex: Hipertrofia, Yoga, Funcional"
                 />
               </div>
-              <Button>Salvar Perfil Profissional</Button>
+              <Button className="w-full md:w-auto">
+                Salvar Perfil Profissional
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

@@ -114,4 +114,11 @@
   .btn-press {
     @apply active:scale-95 transition-transform duration-150 ease-out;
   }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
