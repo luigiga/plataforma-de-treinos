@@ -12,6 +12,7 @@ import WorkoutDetails from './pages/WorkoutDetails'
 import TrainerDashboard from './pages/TrainerDashboard'
 import CreateEditWorkout from './pages/CreateEditWorkout'
 import Profile from './pages/Profile'
+import ProgressHistory from './pages/ProgressHistory'
 import NotFound from './pages/NotFound'
 
 const App = () => (
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/create-workout" element={<CreateEditWorkout />} />
           <Route path="/edit-workout/:id" element={<CreateEditWorkout />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/progress" element={<ProgressHistory />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

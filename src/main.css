@@ -6,36 +6,36 @@
 
 @layer base {
   :root {
-    /* iOS Inspired Palette */
-    --background: 0 0% 100%; /* #FFFFFF */
-    --foreground: 240 4% 11%; /* #1C1C1E */
+    /* iOS Inspired Palette - Enhanced for Vibrancy */
+    --background: 210 20% 98%; /* #F5F7FA - Light Blue-Grey */
+    --foreground: 222 47% 11%; /* #0F172A */
 
     --card: 0 0% 100%;
-    --card-foreground: 240 4% 11%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 4% 11%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 211 100% 50%; /* #007AFF */
-    --primary-foreground: 0 0% 100%;
+    --primary: 211 100% 50%; /* #007AFF - iOS Blue */
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 240 5% 96%; /* #EFEFF4 */
-    --secondary-foreground: 240 4% 11%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
 
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 2% 39%; /* #636366 */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 211 100% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11.2%;
 
-    --destructive: 0 100% 59%; /* #FF3B30 */
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 240 6% 90%; /* #E5E5EA approx for borders */
-    --input: 240 6% 90%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
     --ring: 211 100% 50%;
 
-    --radius: 0.75rem; /* 12px */
+    --radius: 1rem; /* 16px for more rounded iOS feel */
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -47,40 +47,40 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     --chart-1: 211 100% 50%;
-    --chart-2: 120 60% 50%;
+    --chart-2: 160 84% 39%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
 
   .dark {
-    --background: 240 4% 11%;
-    --foreground: 0 0% 100%;
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
 
-    --card: 240 4% 16%;
-    --card-foreground: 0 0% 100%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 240 4% 16%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
 
     --primary: 211 100% 50%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 222 47% 11.2%;
 
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 64%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 211 100% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 240 4% 26%;
-    --input: 240 4% 26%;
-    --ring: 211 100% 50%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
   }
 }
 
@@ -89,7 +89,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased selection:bg-primary/20 selection:text-primary;
   }
   h1,
   h2,
@@ -99,14 +99,28 @@
   h6 {
     @apply font-display tracking-tight;
   }
+
+  /* Smooth scrolling for the whole page */
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 @layer utilities {
   .glass-nav {
-    @apply bg-white/80 backdrop-blur-md border-b border-black/5 dark:bg-black/80 dark:border-white/10;
+    @apply bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-sm dark:bg-black/70 dark:border-white/10;
+  }
+
+  .glass-card {
+    @apply bg-white/60 backdrop-blur-lg border border-white/20 shadow-lg dark:bg-black/40 dark:border-white/10;
   }
 
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* iOS-like button press effect */
+  .btn-press {
+    @apply active:scale-95 transition-transform duration-200 ease-apple;
   }
 }

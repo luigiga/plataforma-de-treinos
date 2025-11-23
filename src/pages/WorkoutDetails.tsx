@@ -1,15 +1,25 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
+import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Clock, BarChart, Play, ArrowLeft } from 'lucide-react'
+import { Clock, BarChart, Play, ArrowLeft, Video } from 'lucide-react'
 import { toast } from 'sonner'
+import { CommentsSection } from '@/components/CommentsSection'
+import { ProgressLogger } from '@/components/ProgressLogger'
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export default function WorkoutDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { workouts } = useData()
+  const { user } = useAuth()
   const workout = workouts.find((w) => w.id === id)
 
   if (!workout) {
@@ -23,45 +33,47 @@ export default function WorkoutDetails() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl animate-fade-in">
       <Button
         variant="ghost"
-        className="mb-4 pl-0 hover:pl-2 transition-all"
+        className="mb-4 pl-0 hover:pl-2 transition-all btn-press"
         onClick={() => navigate(-1)}
       >
         <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
       </Button>
 
-      <div className="relative h-[300px] md:h-[400px] rounded-2xl overflow-hidden mb-8 shadow-xl">
+      <div className="relative h-[300px] md:h-[450px] rounded-3xl overflow-hidden mb-8 shadow-ios-float transform transition-transform hover:scale-[1.01] duration-500">
         <img
           src={workout.image}
           alt={workout.title}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8 text-white">
-          <div className="flex gap-2 mb-4">
-            <Badge className="bg-primary text-white border-none">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-8 text-white">
+          <div className="flex gap-2 mb-4 animate-fade-in-up delay-100">
+            <Badge className="bg-primary text-white border-none px-3 py-1">
               {workout.difficulty}
             </Badge>
             {workout.category.map((cat) => (
               <Badge
                 key={cat}
                 variant="outline"
-                className="text-white border-white/50"
+                className="text-white border-white/50 px-3 py-1"
               >
                 {cat}
               </Badge>
             ))}
           </div>
-          <h1 className="text-4xl font-bold mb-2">{workout.title}</h1>
-          <p className="text-lg text-gray-200 mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold mb-2 animate-fade-in-up delay-200">
+            {workout.title}
+          </h1>
+          <p className="text-lg text-gray-200 mb-6 animate-fade-in-up delay-300">
             por {workout.trainerName}
           </p>
-          <div className="flex items-center gap-6 text-sm font-medium">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-6 text-sm font-medium animate-fade-in-up delay-400">
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full">
               <Clock size={18} /> {workout.duration} min
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full">
               <BarChart size={18} /> {workout.exercises.length} exercícios
             </div>
           </div>
@@ -69,31 +81,74 @@ export default function WorkoutDetails() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-8">
-          <section>
+        <div className="md:col-span-2 space-y-10">
+          <section className="animate-fade-in-up delay-500">
             <h2 className="text-2xl font-bold mb-4">Sobre o Treino</h2>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed text-lg">
               {workout.description}
             </p>
           </section>
 
-          <section>
-            <h2 className="text-2xl font-bold mb-4">Exercícios</h2>
-            <div className="space-y-4">
+          <section className="animate-fade-in-up delay-600">
+            <h2 className="text-2xl font-bold mb-6">Exercícios</h2>
+            <div className="space-y-6">
               {workout.exercises.map((exercise, index) => (
-                <Card key={exercise.id} className="overflow-hidden">
+                <Card
+                  key={exercise.id}
+                  className="overflow-hidden border-none shadow-elevation hover:shadow-lg transition-shadow duration-300"
+                >
                   <CardContent className="p-0 flex flex-col sm:flex-row">
-                    <div className="bg-secondary w-full sm:w-32 h-32 flex items-center justify-center text-muted-foreground font-bold text-2xl shrink-0">
-                      {index + 1}
+                    <div className="bg-secondary w-full sm:w-32 h-32 flex items-center justify-center text-muted-foreground font-bold text-2xl shrink-0 relative group">
+                      {exercise.videoUrl ? (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <button className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/40 transition-colors">
+                              <div className="bg-white/90 p-3 rounded-full shadow-lg transform group-hover:scale-110 transition-transform">
+                                <Play className="fill-primary text-primary ml-1" />
+                              </div>
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[800px] p-0 bg-black border-none">
+                            <DialogTitle className="sr-only">
+                              Vídeo de {exercise.name}
+                            </DialogTitle>
+                            <div className="aspect-video w-full">
+                              <video
+                                controls
+                                className="w-full h-full"
+                                poster={workout.image}
+                              >
+                                <source
+                                  src={exercise.videoUrl}
+                                  type="video/mp4"
+                                />
+                                Seu navegador não suporta vídeos.
+                              </video>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      ) : (
+                        <span>{index + 1}</span>
+                      )}
                     </div>
                     <div className="p-6 flex-grow">
-                      <h3 className="text-xl font-bold mb-2">
-                        {exercise.name}
-                      </h3>
+                      <div className="flex justify-between items-start">
+                        <h3 className="text-xl font-bold mb-2">
+                          {exercise.name}
+                        </h3>
+                        {exercise.videoUrl && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Video size={12} /> Vídeo
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex gap-4 text-sm text-muted-foreground mb-3">
-                        <span>{exercise.sets} Séries</span>
-                        <span>•</span>
-                        <span>{exercise.reps} Repetições</span>
+                        <span className="bg-secondary/50 px-2 py-1 rounded-md">
+                          {exercise.sets} Séries
+                        </span>
+                        <span className="bg-secondary/50 px-2 py-1 rounded-md">
+                          {exercise.reps} Repetições
+                        </span>
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {exercise.instructions}
@@ -104,25 +159,41 @@ export default function WorkoutDetails() {
               ))}
             </div>
           </section>
+
+          <section className="animate-fade-in-up delay-700">
+            <CommentsSection workoutId={workout.id} />
+          </section>
         </div>
 
-        <div className="md:col-span-1">
-          <Card className="sticky top-24">
+        <div className="md:col-span-1 animate-slide-in-right delay-500">
+          <Card className="sticky top-24 border-none shadow-ios-float">
             <CardContent className="p-6 space-y-6">
               <Button
                 size="lg"
-                className="w-full text-lg h-14"
+                className="w-full text-lg h-14 rounded-xl shadow-lg shadow-primary/25 btn-press"
                 onClick={handleStartWorkout}
               >
                 <Play className="mr-2 fill-current" /> Começar Treino
               </Button>
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-2">
+
+              {user && user.role === 'subscriber' && (
+                <ProgressLogger
+                  workoutId={workout.id}
+                  workoutTitle={workout.title}
+                />
+              )}
+
+              <div className="text-center pt-4 border-t border-border">
+                <p className="text-sm text-muted-foreground mb-3">
                   Equipamentos Necessários
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Badge variant="secondary">Halteres</Badge>
-                  <Badge variant="secondary">Colchonete</Badge>
+                  <Badge variant="secondary" className="bg-secondary/50">
+                    Halteres
+                  </Badge>
+                  <Badge variant="secondary" className="bg-secondary/50">
+                    Colchonete
+                  </Badge>
                 </div>
               </div>
             </CardContent>

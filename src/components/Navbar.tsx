@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Menu, X, Dumbbell } from 'lucide-react'
+import { Menu, Dumbbell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { useAuth } from '@/context/AuthContext'
@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Notifications } from '@/components/Notifications'
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -49,19 +50,24 @@ export function Navbar() {
       path: '/trainer-dashboard',
       show: !!user && user.role === 'trainer',
     },
+    {
+      name: 'Progresso',
+      path: '/progress',
+      show: !!user && user.role === 'subscriber',
+    },
     { name: 'Planos', path: '/plans', show: true },
   ]
 
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'glass-nav h-[60px] shadow-sm' : 'bg-transparent h-[70px]'
+        isScrolled ? 'glass-nav h-[60px]' : 'bg-transparent h-[70px]'
       }`}
     >
       <div className="container mx-auto px-4 h-full flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="bg-primary text-white p-1.5 rounded-lg transition-transform group-hover:scale-110 duration-300">
+          <div className="bg-primary text-white p-1.5 rounded-lg transition-transform group-hover:scale-110 duration-300 shadow-lg shadow-primary/30">
             <Dumbbell size={20} />
           </div>
           <span className="font-display font-bold text-xl tracking-tight text-foreground">
@@ -91,63 +97,75 @@ export function Navbar() {
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-4">
           {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="relative h-10 w-10 rounded-full"
-                >
-                  <Avatar className="h-10 w-10 border border-border">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {user.name}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/profile')}>
-                  Meu Perfil
-                </DropdownMenuItem>
-                {user.role === 'trainer' && (
-                  <DropdownMenuItem
-                    onClick={() => navigate('/trainer-dashboard')}
+            <>
+              <Notifications />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-10 w-10 rounded-full btn-press"
                   >
-                    Dashboard
+                    <Avatar className="h-10 w-10 border border-border shadow-sm">
+                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user.name}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    Meu Perfil
                   </DropdownMenuItem>
-                )}
-                {user.role === 'subscriber' && (
-                  <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-                    Meus Treinos
+                  {user.role === 'trainer' && (
+                    <DropdownMenuItem
+                      onClick={() => navigate('/trainer-dashboard')}
+                    >
+                      Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  {user.role === 'subscriber' && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                        Meus Treinos
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/progress')}>
+                        Meu Progresso
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    Sair
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  className="text-destructive focus:text-destructive"
-                >
-                  Sair
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           ) : (
             <>
               <Button
                 variant="ghost"
                 onClick={() => navigate('/auth?tab=login')}
+                className="btn-press"
               >
                 Entrar
               </Button>
-              <Button onClick={() => navigate('/auth?tab=register')}>
+              <Button
+                onClick={() => navigate('/auth?tab=register')}
+                className="btn-press shadow-lg shadow-primary/20"
+              >
                 Cadastrar
               </Button>
             </>
@@ -155,7 +173,8 @@ export function Navbar() {
         </div>
 
         {/* Mobile Menu */}
-        <div className="md:hidden">
+        <div className="md:hidden flex items-center gap-4">
+          {user && <Notifications />}
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">

@@ -24,13 +24,14 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Trash2, Plus, ArrowLeft } from 'lucide-react'
+import { Trash2, Plus, ArrowLeft, Video } from 'lucide-react'
 
 const exerciseSchema = z.object({
   name: z.string().min(1, 'Nome do exercício é obrigatório'),
   sets: z.string().min(1, 'Séries obrigatórias'),
   reps: z.string().min(1, 'Repetições obrigatórias'),
   instructions: z.string(),
+  videoUrl: z.string().optional(),
 })
 
 const workoutSchema = z.object({
@@ -59,7 +60,9 @@ export default function CreateEditWorkout() {
       image: 'https://img.usecurling.com/p/800/600?q=gym',
       duration: 30,
       difficulty: 'Iniciante',
-      exercises: [{ name: '', sets: '', reps: '', instructions: '' }],
+      exercises: [
+        { name: '', sets: '', reps: '', instructions: '', videoUrl: '' },
+      ],
     },
   })
 
@@ -81,6 +84,7 @@ export default function CreateEditWorkout() {
           sets: e.sets,
           reps: e.reps,
           instructions: e.instructions,
+          videoUrl: e.videoUrl || '',
         })),
       })
     }
@@ -89,8 +93,8 @@ export default function CreateEditWorkout() {
   const onSubmit = (data: z.infer<typeof workoutSchema>) => {
     const workoutData = {
       ...data,
-      trainerId: user?.id || '101', // Mock ID
-      category: ['Geral'], // Mock category
+      trainerId: user?.id || '101',
+      category: ['Geral'],
       status: 'published' as const,
       exercises: data.exercises.map((e, i) => ({ ...e, id: `new-${i}` })),
     }
@@ -104,10 +108,10 @@ export default function CreateEditWorkout() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+    <div className="container mx-auto px-4 py-8 max-w-3xl animate-fade-in">
       <Button
         variant="ghost"
-        className="mb-4 pl-0"
+        className="mb-4 pl-0 btn-press"
         onClick={() => navigate('/trainer-dashboard')}
       >
         <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
@@ -119,7 +123,7 @@ export default function CreateEditWorkout() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card>
+          <Card className="shadow-elevation border-none">
             <CardHeader>
               <CardTitle>Informações Básicas</CardTitle>
             </CardHeader>
@@ -222,21 +226,31 @@ export default function CreateEditWorkout() {
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  append({ name: '', sets: '', reps: '', instructions: '' })
+                  append({
+                    name: '',
+                    sets: '',
+                    reps: '',
+                    instructions: '',
+                    videoUrl: '',
+                  })
                 }
+                className="btn-press"
               >
                 <Plus className="mr-2 h-4 w-4" /> Adicionar Exercício
               </Button>
             </div>
 
             {fields.map((field, index) => (
-              <Card key={field.id}>
+              <Card
+                key={field.id}
+                className="shadow-sm border border-border/50 animate-scale-up"
+              >
                 <CardContent className="pt-6 relative">
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute top-2 right-2 text-destructive hover:text-destructive"
+                    className="absolute top-2 right-2 text-destructive hover:text-destructive btn-press"
                     onClick={() => remove(index)}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -299,6 +313,24 @@ export default function CreateEditWorkout() {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={form.control}
+                      name={`exercises.${index}.videoUrl`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Video size={14} /> URL do Vídeo (Opcional)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="https://... (mp4 ou link direto)"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -310,10 +342,13 @@ export default function CreateEditWorkout() {
               type="button"
               variant="outline"
               onClick={() => navigate('/trainer-dashboard')}
+              className="btn-press"
             >
               Cancelar
             </Button>
-            <Button type="submit">Salvar Treino</Button>
+            <Button type="submit" className="btn-press">
+              Salvar Treino
+            </Button>
           </div>
         </form>
       </Form>
