@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Menu, Dumbbell } from 'lucide-react'
+import { Menu, Dumbbell, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { useAuth } from '@/context/AuthContext'
@@ -22,9 +22,7 @@ export function Navbar() {
   const location = useLocation()
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10)
-    }
+    const handleScroll = () => setIsScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
@@ -55,17 +53,15 @@ export function Navbar() {
       path: '/progress',
       show: !!user && user.role === 'subscriber',
     },
+    { name: 'Comunidade', path: '/social', show: true },
     { name: 'Planos', path: '/plans', show: true },
   ]
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'glass-nav h-[60px]' : 'bg-transparent h-[70px]'
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'glass-nav h-[60px]' : 'bg-transparent h-[70px]'}`}
     >
       <div className="container mx-auto px-4 h-full flex items-center justify-between">
-        {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
           <div className="bg-primary text-white p-1.5 rounded-lg transition-transform group-hover:scale-110 duration-300 shadow-lg shadow-primary/30">
             <Dumbbell size={20} />
@@ -75,7 +71,6 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8">
           {navLinks
             .filter((link) => link.show)
@@ -83,18 +78,13 @@ export function Navbar() {
               <Link
                 key={link.path}
                 to={link.path}
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === link.path
-                    ? 'text-primary'
-                    : 'text-muted-foreground'
-                }`}
+                className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === link.path ? 'text-primary' : 'text-muted-foreground'}`}
               >
                 {link.name}
               </Link>
             ))}
         </nav>
 
-        {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-4">
           {user ? (
             <>
@@ -172,7 +162,6 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile Menu */}
         <div className="md:hidden flex items-center gap-4">
           {user && <Notifications />}
           <Sheet>

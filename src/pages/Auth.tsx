@@ -53,11 +53,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      if (user.role === 'trainer') {
-        navigate('/trainer-dashboard')
-      } else {
-        navigate('/dashboard')
-      }
+      navigate(user.role === 'trainer' ? '/trainer-dashboard' : '/dashboard')
     }
   }, [user, navigate])
 
@@ -77,9 +73,14 @@ export default function Auth() {
     },
   })
 
-  function onLogin(data: z.infer<typeof loginSchema>) {
+  async function onLogin(data: z.infer<typeof loginSchema>) {
     const role = data.isTrainer ? 'trainer' : 'subscriber'
-    login(data.email, role)
+    const success = await login(data.email, role)
+    if (!success) {
+      loginForm.setError('root', {
+        message: 'Falha no login. Verifique suas credenciais e tipo de conta.',
+      })
+    }
   }
 
   function onRegister(data: z.infer<typeof registerSchema>) {
@@ -162,30 +163,16 @@ export default function Auth() {
                       </FormItem>
                     )}
                   />
+                  {loginForm.formState.errors.root && (
+                    <p className="text-sm text-destructive">
+                      {loginForm.formState.errors.root.message}
+                    </p>
+                  )}
                   <Button type="submit" className="w-full">
                     Entrar
                   </Button>
                 </form>
               </Form>
-              <div className="mt-4 text-center text-sm">
-                <span className="text-muted-foreground">Ou entre com</span>
-                <div className="flex justify-center gap-4 mt-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full"
-                  >
-                    G
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full"
-                  >
-                    A
-                  </Button>
-                </div>
-              </div>
             </TabsContent>
 
             <TabsContent value="register">

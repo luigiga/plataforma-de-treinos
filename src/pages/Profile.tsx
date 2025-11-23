@@ -1,4 +1,5 @@
 import { useAuth } from '@/context/AuthContext'
+import { useData } from '@/context/DataContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,9 +13,11 @@ import {
 } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
+import { Users } from 'lucide-react'
 
 export default function Profile() {
   const { user, updateUser } = useAuth()
+  const { following, publicUsers } = useData()
 
   if (!user)
     return (
@@ -25,13 +28,31 @@ export default function Profile() {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault()
-    // In a real app, we would gather form data here
     toast.success('Perfil atualizado com sucesso!')
   }
 
+  const followingCount = following.filter(
+    (f) => f.followerId === user.id,
+  ).length
+  const followersCount = following.filter(
+    (f) => f.followingId === user.id,
+  ).length
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-8">Configurações</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold">Configurações</h1>
+        <div className="flex gap-6 text-sm">
+          <div className="text-center">
+            <p className="font-bold text-xl">{followingCount}</p>
+            <p className="text-muted-foreground">Seguindo</p>
+          </div>
+          <div className="text-center">
+            <p className="font-bold text-xl">{followersCount}</p>
+            <p className="text-muted-foreground">Seguidores</p>
+          </div>
+        </div>
+      </div>
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8">
@@ -82,9 +103,7 @@ export default function Profile() {
           <Card>
             <CardHeader>
               <CardTitle>Segurança</CardTitle>
-              <CardDescription>
-                Gerencie sua senha e segurança da conta.
-              </CardDescription>
+              <CardDescription>Gerencie sua senha.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
@@ -104,9 +123,7 @@ export default function Profile() {
           <Card>
             <CardHeader>
               <CardTitle>Sua Assinatura</CardTitle>
-              <CardDescription>
-                Gerencie seu plano e pagamentos.
-              </CardDescription>
+              <CardDescription>Gerencie seu plano.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-secondary/50 p-4 rounded-lg flex justify-between items-center">

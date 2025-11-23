@@ -12,7 +12,14 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Search, Clock, BarChart, User, TrendingUp } from 'lucide-react'
+import {
+  Search,
+  Clock,
+  BarChart,
+  User,
+  TrendingUp,
+  Sparkles,
+} from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function SubscriberDashboard() {
@@ -34,6 +41,15 @@ export default function SubscriberDashboard() {
       </div>
     )
   }
+
+  // Recommendation Logic
+  const recommendedWorkouts = workouts
+    .filter(
+      (w) =>
+        user.preferences?.some((pref) => w.category.includes(pref)) &&
+        w.status === 'published',
+    )
+    .slice(0, 3)
 
   const filteredWorkouts = workouts.filter((workout) => {
     const matchesSearch =
@@ -69,7 +85,7 @@ export default function SubscriberDashboard() {
           <div className="relative w-full md:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
-              placeholder="Buscar treinos ou trainers..."
+              placeholder="Buscar treinos..."
               className="pl-10 w-full md:w-[300px] rounded-xl"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -77,6 +93,43 @@ export default function SubscriberDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Recommendations Section */}
+      {recommendedWorkouts.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="text-yellow-500 fill-yellow-500" />
+            <h2 className="text-xl font-bold">Recomendado para Você</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {recommendedWorkouts.map((workout) => (
+              <Link key={`rec-${workout.id}`} to={`/workout/${workout.id}`}>
+                <Card className="h-full border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">{workout.title}</CardTitle>
+                    <div className="flex gap-2 mt-1">
+                      {workout.category.map((c) => (
+                        <Badge
+                          key={c}
+                          variant="secondary"
+                          className="text-[10px]"
+                        >
+                          {c}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {workout.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <Tabs
         defaultValue="Todos"
@@ -117,7 +170,6 @@ export default function SubscriberDashboard() {
                     {workout.difficulty}
                   </Badge>
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </div>
               <CardHeader className="pb-2">
                 <CardTitle className="line-clamp-1 text-xl">
@@ -155,14 +207,6 @@ export default function SubscriberDashboard() {
           </Link>
         ))}
       </div>
-
-      {filteredWorkouts.length === 0 && (
-        <div className="text-center py-20">
-          <p className="text-muted-foreground text-lg">
-            Nenhum treino encontrado com esses filtros.
-          </p>
-        </div>
-      )}
     </div>
   )
 }

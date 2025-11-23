@@ -4,7 +4,15 @@ import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Clock, BarChart, Play, ArrowLeft, Video } from 'lucide-react'
+import {
+  Clock,
+  BarChart,
+  Play,
+  ArrowLeft,
+  Video,
+  Zap,
+  Repeat,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { CommentsSection } from '@/components/CommentsSection'
 import { ProgressLogger } from '@/components/ProgressLogger'
@@ -22,54 +30,56 @@ export default function WorkoutDetails() {
   const { user } = useAuth()
   const workout = workouts.find((w) => w.id === id)
 
-  if (!workout) {
+  if (!workout)
     return (
       <div className="container py-20 text-center">Treino não encontrado.</div>
     )
-  }
 
-  const handleStartWorkout = () => {
-    toast.success('Treino iniciado! Bom treino!')
-  }
+  const handleStartWorkout = () => toast.success('Treino iniciado! Bom treino!')
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl animate-fade-in">
       <Button
         variant="ghost"
-        className="mb-4 pl-0 hover:pl-2 transition-all btn-press"
+        className="mb-4 pl-0 hover:pl-2 transition-all"
         onClick={() => navigate(-1)}
       >
         <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
       </Button>
 
-      <div className="relative h-[300px] md:h-[450px] rounded-3xl overflow-hidden mb-8 shadow-ios-float transform transition-transform hover:scale-[1.01] duration-500">
+      <div className="relative h-[300px] md:h-[450px] rounded-3xl overflow-hidden mb-8 shadow-ios-float">
         <img
           src={workout.image}
           alt={workout.title}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-8 text-white">
-          <div className="flex gap-2 mb-4 animate-fade-in-up delay-100">
-            <Badge className="bg-primary text-white border-none px-3 py-1">
+          <div className="flex gap-2 mb-4">
+            <Badge className="bg-primary text-white border-none">
               {workout.difficulty}
             </Badge>
+            {workout.isCircuit && (
+              <Badge variant="destructive" className="gap-1">
+                <Zap size={12} /> Circuito
+              </Badge>
+            )}
             {workout.category.map((cat) => (
               <Badge
                 key={cat}
                 variant="outline"
-                className="text-white border-white/50 px-3 py-1"
+                className="text-white border-white/50"
               >
                 {cat}
               </Badge>
             ))}
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-2 animate-fade-in-up delay-200">
+          <h1 className="text-4xl md:text-5xl font-bold mb-2">
             {workout.title}
           </h1>
-          <p className="text-lg text-gray-200 mb-6 animate-fade-in-up delay-300">
+          <p className="text-lg text-gray-200 mb-6">
             por {workout.trainerName}
           </p>
-          <div className="flex items-center gap-6 text-sm font-medium animate-fade-in-up delay-400">
+          <div className="flex items-center gap-6 text-sm font-medium">
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full">
               <Clock size={18} /> {workout.duration} min
             </div>
@@ -82,28 +92,28 @@ export default function WorkoutDetails() {
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-10">
-          <section className="animate-fade-in-up delay-500">
+          <section>
             <h2 className="text-2xl font-bold mb-4">Sobre o Treino</h2>
             <p className="text-muted-foreground leading-relaxed text-lg">
               {workout.description}
             </p>
           </section>
 
-          <section className="animate-fade-in-up delay-600">
+          <section>
             <h2 className="text-2xl font-bold mb-6">Exercícios</h2>
             <div className="space-y-6">
               {workout.exercises.map((exercise, index) => (
                 <Card
                   key={exercise.id}
-                  className="overflow-hidden border-none shadow-elevation hover:shadow-lg transition-shadow duration-300"
+                  className="overflow-hidden border-none shadow-elevation"
                 >
                   <CardContent className="p-0 flex flex-col sm:flex-row">
-                    <div className="bg-secondary w-full sm:w-32 h-32 flex items-center justify-center text-muted-foreground font-bold text-2xl shrink-0 relative group">
+                    <div className="bg-secondary w-full sm:w-32 h-auto min-h-[8rem] flex items-center justify-center text-muted-foreground font-bold text-2xl shrink-0 relative group">
                       {exercise.videoUrl ? (
                         <Dialog>
                           <DialogTrigger asChild>
                             <button className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/40 transition-colors">
-                              <div className="bg-white/90 p-3 rounded-full shadow-lg transform group-hover:scale-110 transition-transform">
+                              <div className="bg-white/90 p-3 rounded-full shadow-lg">
                                 <Play className="fill-primary text-primary ml-1" />
                               </div>
                             </button>
@@ -123,7 +133,6 @@ export default function WorkoutDetails() {
                                   src={exercise.videoUrl}
                                   type="video/mp4"
                                 />
-                                Seu navegador não suporta vídeos.
                               </video>
                             </div>
                           </DialogContent>
@@ -151,52 +160,58 @@ export default function WorkoutDetails() {
                           {exercise.reps} Repetições
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground mb-4">
                         {exercise.instructions}
                       </p>
+
+                      {exercise.variations &&
+                        exercise.variations.length > 0 && (
+                          <div className="bg-secondary/20 p-3 rounded-lg">
+                            <p className="text-xs font-bold text-muted-foreground mb-2 flex items-center gap-1">
+                              <Repeat size={12} /> Variações
+                            </p>
+                            <ul className="space-y-1">
+                              {exercise.variations.map((v, i) => (
+                                <li
+                                  key={i}
+                                  className="text-sm flex justify-between"
+                                >
+                                  <span>{v.name}</span>
+                                  <span className="text-muted-foreground text-xs">
+                                    {v.sets} x {v.reps}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           </section>
-
-          <section className="animate-fade-in-up delay-700">
+          <section>
             <CommentsSection workoutId={workout.id} />
           </section>
         </div>
 
-        <div className="md:col-span-1 animate-slide-in-right delay-500">
+        <div className="md:col-span-1">
           <Card className="sticky top-24 border-none shadow-ios-float">
             <CardContent className="p-6 space-y-6">
               <Button
                 size="lg"
-                className="w-full text-lg h-14 rounded-xl shadow-lg shadow-primary/25 btn-press"
+                className="w-full text-lg h-14 rounded-xl shadow-lg shadow-primary/25"
                 onClick={handleStartWorkout}
               >
                 <Play className="mr-2 fill-current" /> Começar Treino
               </Button>
-
               {user && user.role === 'subscriber' && (
                 <ProgressLogger
                   workoutId={workout.id}
                   workoutTitle={workout.title}
                 />
               )}
-
-              <div className="text-center pt-4 border-t border-border">
-                <p className="text-sm text-muted-foreground mb-3">
-                  Equipamentos Necessários
-                </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Badge variant="secondary" className="bg-secondary/50">
-                    Halteres
-                  </Badge>
-                  <Badge variant="secondary" className="bg-secondary/50">
-                    Colchonete
-                  </Badge>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>

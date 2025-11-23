@@ -13,6 +13,7 @@ import TrainerDashboard from './pages/TrainerDashboard'
 import CreateEditWorkout from './pages/CreateEditWorkout'
 import Profile from './pages/Profile'
 import ProgressHistory from './pages/ProgressHistory'
+import Social from './pages/Social'
 import NotFound from './pages/NotFound'
 
 const App = () => (
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/edit-workout/:id" element={<CreateEditWorkout />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/progress" element={<ProgressHistory />} />
+          <Route path="/social" element={<Social />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
