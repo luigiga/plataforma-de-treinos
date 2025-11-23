@@ -80,7 +80,7 @@ export default function Auth() {
 
   async function onLogin(data: z.infer<typeof loginSchema>) {
     const role = data.isTrainer ? 'trainer' : 'subscriber'
-    const success = await login(data.email, role)
+    const success = await login(data.email, data.password, role)
     if (!success) {
       loginForm.setError('root', {
         message: 'Falha no login. Verifique suas credenciais.',

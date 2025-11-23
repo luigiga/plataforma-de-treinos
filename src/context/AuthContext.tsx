@@ -31,7 +31,7 @@ interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   allUsers: User[]
-  login: (email: string, role: UserRole) => Promise<boolean>
+  login: (email: string, password: string, role: UserRole) => Promise<boolean>
   register: (data: Partial<User>) => void
   logout: () => void
   updateUser: (data: Partial<User>) => void
@@ -46,7 +46,7 @@ const MOCK_USERS: User[] = [
   {
     id: '0',
     name: 'Administrador',
-    email: 'admin@fit.com',
+    email: 'admin@example.com',
     role: 'admin',
     avatar: 'https://img.usecurling.com/ppl/medium?gender=male&seed=admin',
     status: 'active',
@@ -96,8 +96,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [allUsers])
 
   const login = useCallback(
-    async (email: string, role: UserRole): Promise<boolean> => {
+    async (
+      email: string,
+      password: string,
+      role: UserRole,
+    ): Promise<boolean> => {
       logger.info(`Login attempt for ${email}`)
+
+      // Admin credential check
+      if (email === 'admin@example.com') {
+        if (password !== 'admin123') {
+          logger.warn(`Login failed: Invalid password for admin ${email}`)
+          toast.error('Credenciais inválidas.')
+          return false
+        }
+
+        // If password is correct, ensure we return the admin user even if not in allUsers (or update it)
+        let adminUser = allUsers.find((u) => u.email === 'admin@example.com')
+        if (!adminUser) {
+          // Fallback to MOCK_USERS[0] if not found in state (e.g. old localstorage)
+          adminUser = MOCK_USERS[0]
+          // Update state to include admin
+          setAllUsers((prev) => [...prev, adminUser!])
+        }
+
+        setUser(adminUser)
+        localStorage.setItem('pt_platform_user', JSON.stringify(adminUser))
+        toast.success(`Bem-vindo de volta, ${adminUser.name}!`)
+        return true
+      }
 
       const existingUser = allUsers.find((u) => u.email === email)
 
