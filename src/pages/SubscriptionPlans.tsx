@@ -11,10 +11,18 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { toast } from 'sonner'
+import { useAuth } from '@/context/AuthContext'
+import { PaymentDialog } from '@/components/PaymentDialog'
+import { useNavigate } from 'react-router-dom'
 
 export default function SubscriptionPlans() {
   const [isAnnual, setIsAnnual] = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState<{
+    name: string
+    price: number
+  } | null>(null)
+  const { user, updateUser } = useAuth()
+  const navigate = useNavigate()
 
   const plans = [
     {
@@ -23,6 +31,7 @@ export default function SubscriptionPlans() {
       description: 'Para quem está começando.',
       features: ['Acesso a 5 treinos/mês', 'Suporte básico', 'Sem anúncios'],
       popular: false,
+      id: 'basic',
     },
     {
       name: 'Premium',
@@ -35,6 +44,7 @@ export default function SubscriptionPlans() {
         'Suporte prioritário',
       ],
       popular: true,
+      id: 'premium',
     },
     {
       name: 'VIP',
@@ -46,13 +56,26 @@ export default function SubscriptionPlans() {
         'Plano nutricional básico',
       ],
       popular: false,
+      id: 'vip',
     },
   ]
 
-  const handleSubscribe = (planName: string) => {
-    toast.success(
-      `Você escolheu o plano ${planName}! Redirecionando para pagamento...`,
-    )
+  const handleSubscribeClick = (plan: { name: string; price: number }) => {
+    if (!user) {
+      navigate('/auth?tab=register')
+      return
+    }
+    setSelectedPlan(plan)
+  }
+
+  const handlePaymentSuccess = () => {
+    if (selectedPlan) {
+      updateUser({
+        subscriptionStatus: 'active',
+        plan: selectedPlan.name.toLowerCase() as any,
+      })
+      navigate('/dashboard')
+    }
   }
 
   return (
@@ -118,14 +141,24 @@ export default function SubscriptionPlans() {
               <Button
                 className="w-full"
                 variant={plan.popular ? 'default' : 'outline'}
-                onClick={() => handleSubscribe(plan.name)}
+                onClick={() => handleSubscribeClick(plan)}
               >
-                Assinar Agora
+                {user?.plan === plan.id ? 'Plano Atual' : 'Assinar Agora'}
               </Button>
             </CardFooter>
           </Card>
         ))}
       </div>
+
+      {selectedPlan && (
+        <PaymentDialog
+          open={!!selectedPlan}
+          onOpenChange={(open) => !open && setSelectedPlan(null)}
+          planName={selectedPlan.name}
+          price={selectedPlan.price}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   )
 }

@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useMemo } from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 
 export type UserRole = 'subscriber' | 'trainer'
+export type SubscriptionStatus = 'active' | 'inactive' | 'canceled'
+export type SubscriptionPlan = 'free' | 'basic' | 'premium' | 'vip'
 
 export interface User {
   id: string
@@ -12,6 +14,8 @@ export interface User {
   avatar?: string
   bio?: string
   preferences?: string[]
+  subscriptionStatus?: SubscriptionStatus
+  plan?: SubscriptionPlan
 }
 
 interface AuthContextType {
@@ -34,6 +38,8 @@ const MOCK_USERS: User[] = [
     role: 'subscriber',
     avatar: 'https://img.usecurling.com/ppl/medium?gender=male&seed=1',
     preferences: ['Hipertrofia', 'Força'],
+    subscriptionStatus: 'active',
+    plan: 'premium',
   },
   {
     id: '2',
@@ -42,6 +48,8 @@ const MOCK_USERS: User[] = [
     role: 'trainer',
     avatar: 'https://img.usecurling.com/ppl/medium?gender=female&seed=2',
     bio: 'Especialista em Yoga e Funcional',
+    subscriptionStatus: 'active',
+    plan: 'vip',
   },
 ]
 
@@ -60,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     if (existingUser) {
       if (existingUser.role !== role) {
-        const errorMsg = `Erro de Login: Esta conta está registrada como ${existingUser.role === 'trainer' ? 'Personal Trainer' : 'Assinante'}. Por favor, ajuste sua seleção.`
+        const errorMsg = `Erro de Login: Esta conta está registrada como ${existingUser.role === 'trainer' ? 'Personal Trainer' : 'Assinante'}.`
         logger.warn(`Login failed: Role mismatch for ${email}`)
         toast.error(errorMsg)
         return false
@@ -69,12 +77,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setUser(existingUser)
       localStorage.setItem('pt_platform_user', JSON.stringify(existingUser))
       toast.success(`Bem-vindo de volta, ${existingUser.name}!`)
-      logger.info(`Login successful for ${email}`)
       return true
     }
 
-    // For demo purposes, allow new users to "login" (simulate registration on the fly if not in mock DB)
-    // In a real app, this would fail or redirect to register
+    // Demo login for new users
     const newUser: User = {
       id: Math.random().toString(36).substr(2, 9),
       name: email.split('@')[0],
@@ -82,12 +88,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       role,
       avatar: `https://img.usecurling.com/ppl/medium?gender=male&seed=${Math.random()}`,
       preferences: role === 'subscriber' ? ['Geral'] : undefined,
+      subscriptionStatus: 'inactive',
+      plan: 'free',
     }
 
     setUser(newUser)
     localStorage.setItem('pt_platform_user', JSON.stringify(newUser))
     toast.success(`Bem-vindo, ${newUser.name}!`)
-    logger.info(`New user login (demo) for ${email}`)
     return true
   }
 
@@ -100,15 +107,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       avatar: `https://img.usecurling.com/ppl/medium?gender=${Math.random() > 0.5 ? 'male' : 'female'}`,
       bio: data.bio,
       preferences: data.role === 'subscriber' ? ['Geral'] : undefined,
+      subscriptionStatus: 'inactive',
+      plan: 'free',
     }
     setUser(newUser)
     localStorage.setItem('pt_platform_user', JSON.stringify(newUser))
-    logger.info(`User registered: ${newUser.email}`)
     toast.success('Conta criada com sucesso!')
   }
 
   const logout = () => {
-    logger.info(`User logged out: ${user?.email}`)
     setUser(null)
     localStorage.removeItem('pt_platform_user')
     toast.info('Você saiu da conta.')
@@ -119,24 +126,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const updatedUser = { ...user, ...data }
     setUser(updatedUser)
     localStorage.setItem('pt_platform_user', JSON.stringify(updatedUser))
-    logger.info(`User updated profile: ${user.id}`)
     toast.success('Perfil atualizado!')
   }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        login,
-        register,
-        logout,
-        updateUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      isAuthenticated: !!user,
+      login,
+      register,
+      logout,
+      updateUser,
+    }),
+    [user],
   )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export const useAuth = () => {

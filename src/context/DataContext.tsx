@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  useCallback,
+} from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 
@@ -67,6 +73,24 @@ export interface PublicUser {
   bio?: string
 }
 
+export interface Assignment {
+  id: string
+  userId: string
+  trainerId: string
+  workoutId: string
+  assignedAt: string
+  status: 'pending' | 'completed'
+}
+
+export interface Message {
+  id: string
+  senderId: string
+  receiverId: string
+  content: string
+  timestamp: string
+  read: boolean
+}
+
 interface DataContextType {
   workouts: Workout[]
   reviews: Review[]
@@ -74,6 +98,8 @@ interface DataContextType {
   notifications: Notification[]
   publicUsers: PublicUser[]
   following: { followerId: string; followingId: string }[]
+  assignments: Assignment[]
+  messages: Message[]
   addWorkout: (
     workout: Omit<Workout, 'id' | 'createdAt' | 'trainerName'>,
   ) => void
@@ -91,6 +117,8 @@ interface DataContextType {
   followUser: (followerId: string, followingId: string) => void
   unfollowUser: (followerId: string, followingId: string) => void
   isFollowing: (followerId: string, followingId: string) => boolean
+  assignWorkout: (userId: string, trainerId: string, workoutId: string) => void
+  sendMessage: (senderId: string, receiverId: string, content: string) => void
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -185,6 +213,22 @@ const INITIAL_PUBLIC_USERS: PublicUser[] = [
   },
 ]
 
+const INITIAL_FOLLOWING = [
+  { followerId: 'u1', followingId: '101' },
+  { followerId: 'u2', followingId: '101' },
+]
+
+const INITIAL_MESSAGES: Message[] = [
+  {
+    id: 'm1',
+    senderId: 'u1',
+    receiverId: '101',
+    content: 'Olá Carlos, adorei o treino de ontem!',
+    timestamp: new Date(Date.now() - 86400000).toISOString(),
+    read: false,
+  },
+]
+
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -193,137 +237,221 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [progressLogs, setProgressLogs] = useState<ProgressLog[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [publicUsers] = useState<PublicUser[]>(INITIAL_PUBLIC_USERS)
-  const [following, setFollowing] = useState<
-    { followerId: string; followingId: string }[]
-  >([])
+  const [following, setFollowing] = useState(INITIAL_FOLLOWING)
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES)
 
-  const addWorkout = (
-    workoutData: Omit<Workout, 'id' | 'createdAt' | 'trainerName'>,
-  ) => {
-    const newWorkout: Workout = {
-      ...workoutData,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-      trainerName: 'Você',
-    }
-    setWorkouts([...workouts, newWorkout])
-    logger.info(`Workout created: ${newWorkout.title}`)
-    toast.success('Treino criado com sucesso!')
-  }
+  const addWorkout = useCallback(
+    (workoutData: Omit<Workout, 'id' | 'createdAt' | 'trainerName'>) => {
+      const newWorkout: Workout = {
+        ...workoutData,
+        id: Math.random().toString(36).substr(2, 9),
+        createdAt: new Date().toISOString(),
+        trainerName: 'Você',
+      }
+      setWorkouts((prev) => [...prev, newWorkout])
+      logger.info(`Workout created: ${newWorkout.title}`)
+      toast.success('Treino criado com sucesso!')
+    },
+    [],
+  )
 
-  const updateWorkout = (id: string, data: Partial<Workout>) => {
-    setWorkouts(workouts.map((w) => (w.id === id ? { ...w, ...data } : w)))
+  const updateWorkout = useCallback((id: string, data: Partial<Workout>) => {
+    setWorkouts((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, ...data } : w)),
+    )
     logger.info(`Workout updated: ${id}`)
     toast.success('Treino atualizado!')
-  }
+  }, [])
 
-  const deleteWorkout = (id: string) => {
-    setWorkouts(workouts.filter((w) => w.id !== id))
+  const deleteWorkout = useCallback((id: string) => {
+    setWorkouts((prev) => prev.filter((w) => w.id !== id))
     logger.info(`Workout deleted: ${id}`)
     toast.success('Treino excluído.')
-  }
+  }, [])
 
-  const getWorkoutsByTrainer = (trainerId: string) =>
-    workouts.filter((w) => w.trainerId === trainerId)
+  const getWorkoutsByTrainer = useCallback(
+    (trainerId: string) => {
+      return workouts.filter((w) => w.trainerId === trainerId)
+    },
+    [workouts],
+  )
 
-  const addReview = (reviewData: Omit<Review, 'id' | 'createdAt'>) => {
-    const newReview: Review = {
-      ...reviewData,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-    }
-    setReviews([newReview, ...reviews])
-    toast.success('Avaliação enviada!')
-  }
+  const addReview = useCallback(
+    (reviewData: Omit<Review, 'id' | 'createdAt'>) => {
+      const newReview: Review = {
+        ...reviewData,
+        id: Math.random().toString(36).substr(2, 9),
+        createdAt: new Date().toISOString(),
+      }
+      setReviews((prev) => [newReview, ...prev])
+      toast.success('Avaliação enviada!')
+    },
+    [],
+  )
 
-  const getReviewsByWorkout = (workoutId: string) =>
-    reviews.filter((r) => r.workoutId === workoutId)
+  const getReviewsByWorkout = useCallback(
+    (workoutId: string) => {
+      return reviews.filter((r) => r.workoutId === workoutId)
+    },
+    [reviews],
+  )
 
-  const addProgressLog = (logData: Omit<ProgressLog, 'id'>) => {
+  const addProgressLog = useCallback((logData: Omit<ProgressLog, 'id'>) => {
     const newLog: ProgressLog = {
       ...logData,
       id: Math.random().toString(36).substr(2, 9),
     }
-    setProgressLogs([newLog, ...progressLogs])
+    setProgressLogs((prev) => [newLog, ...prev])
     toast.success('Progresso registrado!')
-  }
+  }, [])
 
-  const getUserProgress = (userId: string) =>
-    progressLogs.filter((log) => log.userId === userId)
+  const getUserProgress = useCallback(
+    (userId: string) => {
+      return progressLogs.filter((log) => log.userId === userId)
+    },
+    [progressLogs],
+  )
 
-  const markNotificationAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
+  const markNotificationAsRead = useCallback((id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
     )
-  }
+  }, [])
 
-  const addNotification = (
-    notification: Omit<Notification, 'id' | 'createdAt' | 'read'>,
-  ) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-      read: false,
-    }
-    setNotifications([newNotification, ...notifications])
-  }
+  const addNotification = useCallback(
+    (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
+      const newNotification: Notification = {
+        ...notification,
+        id: Math.random().toString(36).substr(2, 9),
+        createdAt: new Date().toISOString(),
+        read: false,
+      }
+      setNotifications((prev) => [newNotification, ...prev])
+    },
+    [],
+  )
 
-  const followUser = (followerId: string, followingId: string) => {
-    if (
-      following.some(
+  const followUser = useCallback((followerId: string, followingId: string) => {
+    setFollowing((prev) => {
+      if (
+        prev.some(
+          (f) => f.followerId === followerId && f.followingId === followingId,
+        )
+      )
+        return prev
+      return [...prev, { followerId, followingId }]
+    })
+    toast.success('Você começou a seguir este usuário!')
+  }, [])
+
+  const unfollowUser = useCallback(
+    (followerId: string, followingId: string) => {
+      setFollowing((prev) =>
+        prev.filter(
+          (f) =>
+            !(f.followerId === followerId && f.followingId === followingId),
+        ),
+      )
+      toast.info('Você deixou de seguir este usuário.')
+    },
+    [],
+  )
+
+  const isFollowing = useCallback(
+    (followerId: string, followingId: string) => {
+      return following.some(
         (f) => f.followerId === followerId && f.followingId === followingId,
       )
-    )
-      return
-    setFollowing([...following, { followerId, followingId }])
-    toast.success('Você começou a seguir este usuário!')
-    logger.info(`User ${followerId} followed ${followingId}`)
-  }
-
-  const unfollowUser = (followerId: string, followingId: string) => {
-    setFollowing(
-      following.filter(
-        (f) => !(f.followerId === followerId && f.followingId === followingId),
-      ),
-    )
-    toast.info('Você deixou de seguir este usuário.')
-    logger.info(`User ${followerId} unfollowed ${followingId}`)
-  }
-
-  const isFollowing = (followerId: string, followingId: string) => {
-    return following.some(
-      (f) => f.followerId === followerId && f.followingId === followingId,
-    )
-  }
-
-  return (
-    <DataContext.Provider
-      value={{
-        workouts,
-        reviews,
-        progressLogs,
-        notifications,
-        publicUsers,
-        following,
-        addWorkout,
-        updateWorkout,
-        deleteWorkout,
-        getWorkoutsByTrainer,
-        addReview,
-        getReviewsByWorkout,
-        addProgressLog,
-        getUserProgress,
-        markNotificationAsRead,
-        addNotification,
-        followUser,
-        unfollowUser,
-        isFollowing,
-      }}
-    >
-      {children}
-    </DataContext.Provider>
+    },
+    [following],
   )
+
+  const assignWorkout = useCallback(
+    (userId: string, trainerId: string, workoutId: string) => {
+      const newAssignment: Assignment = {
+        id: Math.random().toString(36).substr(2, 9),
+        userId,
+        trainerId,
+        workoutId,
+        assignedAt: new Date().toISOString(),
+        status: 'pending',
+      }
+      setAssignments((prev) => [...prev, newAssignment])
+      toast.success('Treino atribuído com sucesso!')
+    },
+    [],
+  )
+
+  const sendMessage = useCallback(
+    (senderId: string, receiverId: string, content: string) => {
+      const newMessage: Message = {
+        id: Math.random().toString(36).substr(2, 9),
+        senderId,
+        receiverId,
+        content,
+        timestamp: new Date().toISOString(),
+        read: false,
+      }
+      setMessages((prev) => [...prev, newMessage])
+    },
+    [],
+  )
+
+  const value = useMemo(
+    () => ({
+      workouts,
+      reviews,
+      progressLogs,
+      notifications,
+      publicUsers,
+      following,
+      assignments,
+      messages,
+      addWorkout,
+      updateWorkout,
+      deleteWorkout,
+      getWorkoutsByTrainer,
+      addReview,
+      getReviewsByWorkout,
+      addProgressLog,
+      getUserProgress,
+      markNotificationAsRead,
+      addNotification,
+      followUser,
+      unfollowUser,
+      isFollowing,
+      assignWorkout,
+      sendMessage,
+    }),
+    [
+      workouts,
+      reviews,
+      progressLogs,
+      notifications,
+      publicUsers,
+      following,
+      assignments,
+      messages,
+      addWorkout,
+      updateWorkout,
+      deleteWorkout,
+      getWorkoutsByTrainer,
+      addReview,
+      getReviewsByWorkout,
+      addProgressLog,
+      getUserProgress,
+      markNotificationAsRead,
+      addNotification,
+      followUser,
+      unfollowUser,
+      isFollowing,
+      assignWorkout,
+      sendMessage,
+    ],
+  )
+
+  return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }
 
 export const useData = () => {
