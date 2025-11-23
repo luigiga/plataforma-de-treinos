@@ -22,6 +22,7 @@ const ProgressHistory = React.lazy(() => import('./pages/ProgressHistory'))
 const Social = React.lazy(() => import('./pages/Social'))
 const NotFound = React.lazy(() => import('./pages/NotFound'))
 const ClientDetails = React.lazy(() => import('./pages/ClientDetails'))
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'))
 
 const App = () => (
   <BrowserRouter
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/progress" element={<ProgressHistory />} />
             <Route path="/social" element={<Social />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

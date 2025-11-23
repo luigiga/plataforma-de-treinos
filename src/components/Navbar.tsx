@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Menu, Dumbbell, Users } from 'lucide-react'
+import { Menu, Dumbbell, ShieldAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { useAuth } from '@/context/AuthContext'
@@ -52,6 +52,11 @@ export function Navbar() {
       name: 'Progresso',
       path: '/progress',
       show: !!user && user.role === 'subscriber',
+    },
+    {
+      name: 'Admin',
+      path: '/admin-dashboard',
+      show: !!user && user.role === 'admin',
     },
     { name: 'Comunidade', path: '/social', show: true },
     { name: 'Planos', path: '/plans', show: true },
@@ -133,6 +138,13 @@ export function Navbar() {
                       </DropdownMenuItem>
                     </>
                   )}
+                  {user.role === 'admin' && (
+                    <DropdownMenuItem
+                      onClick={() => navigate('/admin-dashboard')}
+                    >
+                      <ShieldAlert className="mr-2 h-4 w-4" /> Painel Admin
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleLogout}
@@ -198,7 +210,9 @@ export function Navbar() {
                           <p className="text-xs text-muted-foreground">
                             {user.role === 'trainer'
                               ? 'Personal Trainer'
-                              : 'Assinante'}
+                              : user.role === 'admin'
+                                ? 'Administrador'
+                                : 'Assinante'}
                           </p>
                         </div>
                       </div>
