@@ -72,14 +72,14 @@ export default function SubscriberDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-6 md:py-8 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Olá, {user?.name}!</h1>
           <p className="text-sm md:text-base text-muted-foreground">
             Pronto para o treino de hoje?
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-center">
+        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto items-center">
           <CalendarSync label="Sincronizar Agenda" />
           <Button
             variant="outline"

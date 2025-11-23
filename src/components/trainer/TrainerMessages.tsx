@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useData, Message } from '@/context/DataContext'
+import { useData } from '@/context/DataContext'
 import { useAuth } from '@/context/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -40,7 +40,7 @@ export function TrainerMessages() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[600px] animate-fade-in">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-220px)] min-h-[500px] animate-fade-in">
       <Card className="md:col-span-1 h-[200px] md:h-auto">
         <CardContent className="p-0 h-full flex flex-col">
           <div className="p-4 border-b font-semibold">Conversas</div>

@@ -90,8 +90,8 @@ export default function WorkoutDetails() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="order-2 md:order-1 md:col-span-2 space-y-10">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="order-2 lg:order-1 lg:col-span-2 space-y-10">
           <section>
             <h2 className="text-2xl font-bold mb-4">Sobre o Treino</h2>
             <p className="text-muted-foreground leading-relaxed text-lg">
@@ -196,7 +196,7 @@ export default function WorkoutDetails() {
           </section>
         </div>
 
-        <div className="order-1 md:order-2 md:col-span-1">
+        <div className="order-1 lg:order-2 lg:col-span-1">
           <Card className="sticky top-24 border-none shadow-ios-float">
             <CardContent className="p-6 space-y-6">
               <Button
