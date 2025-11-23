@@ -8,6 +8,7 @@ import { TrainerOverview } from '@/components/trainer/TrainerOverview'
 import { TrainerClients } from '@/components/trainer/TrainerClients'
 import { TrainerWorkouts } from '@/components/trainer/TrainerWorkouts'
 import { TrainerMessages } from '@/components/trainer/TrainerMessages'
+import { CalendarSync } from '@/components/CalendarSync'
 
 export default function TrainerDashboard() {
   const { user } = useAuth()
@@ -45,14 +46,21 @@ export default function TrainerDashboard() {
             Gerencie seus alunos e treinos em um só lugar.
           </p>
         </div>
-        <Button
-          asChild
-          className="shadow-lg shadow-primary/20 w-full sm:w-auto"
-        >
-          <Link to="/create-workout">
-            <Plus className="mr-2 h-4 w-4" /> Novo Treino
-          </Link>
-        </Button>
+        <div className="flex gap-4 w-full sm:w-auto">
+          <CalendarSync
+            label="Sincronizar Agenda"
+            eventTitle="Sessões de Treino"
+            eventDescription="Agenda de alunos da FitPlatform"
+          />
+          <Button
+            asChild
+            className="shadow-lg shadow-primary/20 w-full sm:w-auto"
+          >
+            <Link to="/create-workout">
+              <Plus className="mr-2 h-4 w-4" /> Novo Treino
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">

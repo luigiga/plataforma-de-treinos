@@ -33,6 +33,8 @@ export interface User {
   subscriptionStatus?: SubscriptionStatus
   plan?: SubscriptionPlan
   status?: UserStatus
+  points?: number
+  badges?: string[]
 }
 
 interface AuthContextType {
@@ -59,6 +61,8 @@ const MOCK_USERS: User[] = [
     status: 'active',
     plan: 'vip',
     bio: 'Gerente da Plataforma',
+    points: 0,
+    badges: [],
   },
   {
     id: '1',
@@ -72,6 +76,8 @@ const MOCK_USERS: User[] = [
     status: 'active',
     bio: 'Focado em superar limites.',
     socialLinks: { instagram: '@joao.fit' },
+    points: 350,
+    badges: ['beginner', 'focused'],
   },
   {
     id: '2',
@@ -84,6 +90,8 @@ const MOCK_USERS: User[] = [
     plan: 'vip',
     status: 'active',
     socialLinks: { instagram: '@maria.yoga', website: 'www.mariayoga.com' },
+    points: 0,
+    badges: [],
   },
 ]
 
@@ -149,6 +157,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         subscriptionStatus: 'inactive',
         plan: 'free',
         status: 'active',
+        points: 0,
+        badges: ['beginner'],
       }
       setAllUsers((prev) => [...prev, newUser])
       setUser(newUser)
@@ -171,6 +181,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       subscriptionStatus: 'inactive',
       plan: 'free',
       status: 'active',
+      points: 0,
+      badges: ['beginner'],
     }
     setAllUsers((prev) => [...prev, newUser])
     setUser(newUser)
@@ -193,7 +205,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         prev.map((u) => (u.id === user.id ? updatedUser : u)),
       )
       localStorage.setItem('pt_platform_user', JSON.stringify(updatedUser))
-      toast.success('Perfil atualizado!')
+      // Only show toast if not just updating points silently
+      if (!data.points) {
+        toast.success('Perfil atualizado!')
+      }
     },
     [user],
   )

@@ -14,8 +14,8 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { toast } from 'sonner'
 import { Instagram, Twitter, Linkedin, Globe } from 'lucide-react'
+import { Gamification } from '@/components/Gamification'
 
 export default function Profile() {
   const { user, updateUser } = useAuth()
@@ -77,6 +77,12 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {user.role === 'subscriber' && (
+        <div className="mb-8">
+          <Gamification />
+        </div>
+      )}
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8 bg-secondary/30 p-1 rounded-xl h-auto">

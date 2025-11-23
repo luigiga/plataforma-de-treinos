@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { PlusCircle } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface ProgressLoggerProps {
   workoutId: string
@@ -26,7 +27,7 @@ export function ProgressLogger({
   workoutTitle,
 }: ProgressLoggerProps) {
   const { addProgressLog } = useData()
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const [open, setOpen] = useState(false)
   const [duration, setDuration] = useState('')
   const [notes, setNotes] = useState('')
@@ -43,6 +44,27 @@ export function ProgressLogger({
       duration: Number(duration),
       notes,
     })
+
+    // Gamification Logic
+    const newPoints = (user.points || 0) + 10
+    const newBadges = [...(user.badges || [])]
+
+    if (!newBadges.includes('focused')) {
+      // Simple check: if points > 50 (approx 5 workouts), award badge
+      if (newPoints >= 50) {
+        newBadges.push('focused')
+        toast.success('Nova Conquista: Focado! (Completou 5 treinos)')
+      }
+    }
+
+    if (!newBadges.includes('master') && newPoints >= 1000) {
+      newBadges.push('master')
+      toast.success('Nova Conquista: Mestre! (1000 pontos)')
+    }
+
+    updateUser({ points: newPoints, badges: newBadges })
+    toast.success('Você ganhou +10 XP!')
+
     setOpen(false)
     setDuration('')
     setNotes('')
@@ -59,7 +81,7 @@ export function ProgressLogger({
         <DialogHeader>
           <DialogTitle>Registrar Treino</DialogTitle>
           <DialogDescription>
-            Salve seus resultados para acompanhar sua evolução.
+            Salve seus resultados para acompanhar sua evolução e ganhar XP.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
@@ -85,7 +107,7 @@ export function ProgressLogger({
             />
           </div>
           <DialogFooter>
-            <Button type="submit">Salvar Registro</Button>
+            <Button type="submit">Salvar Registro (+10 XP)</Button>
           </DialogFooter>
         </form>
       </DialogContent>

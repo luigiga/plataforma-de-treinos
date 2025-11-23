@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { ThemeProvider } from '@/components/theme-provider'
 import Layout from './components/Layout'
 import { Loading } from './components/Loading'
 
@@ -28,31 +29,33 @@ const App = () => (
   <BrowserRouter
     future={{ v7_startTransition: false, v7_relativeSplatPath: false }}
   >
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <Suspense fallback={<Loading />}>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/trainers" element={<ForTrainers />} />
-            <Route path="/plans" element={<SubscriptionPlans />} />
-            <Route path="/dashboard" element={<SubscriberDashboard />} />
-            <Route path="/workout/:id" element={<WorkoutDetails />} />
-            <Route path="/trainer-dashboard" element={<TrainerDashboard />} />
-            <Route path="/trainer/client/:id" element={<ClientDetails />} />
-            <Route path="/create-workout" element={<CreateEditWorkout />} />
-            <Route path="/edit-workout/:id" element={<CreateEditWorkout />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/progress" element={<ProgressHistory />} />
-            <Route path="/social" element={<Social />} />
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <Suspense fallback={<Loading />}>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/trainers" element={<ForTrainers />} />
+              <Route path="/plans" element={<SubscriptionPlans />} />
+              <Route path="/dashboard" element={<SubscriberDashboard />} />
+              <Route path="/workout/:id" element={<WorkoutDetails />} />
+              <Route path="/trainer-dashboard" element={<TrainerDashboard />} />
+              <Route path="/trainer/client/:id" element={<ClientDetails />} />
+              <Route path="/create-workout" element={<CreateEditWorkout />} />
+              <Route path="/edit-workout/:id" element={<CreateEditWorkout />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/progress" element={<ProgressHistory />} />
+              <Route path="/social" element={<Social />} />
+              <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </TooltipProvider>
+    </ThemeProvider>
   </BrowserRouter>
 )
 

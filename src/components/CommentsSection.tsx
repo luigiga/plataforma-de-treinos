@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
+import { toast } from 'sonner'
 
 interface CommentsSectionProps {
   workoutId: string
@@ -14,7 +15,7 @@ interface CommentsSectionProps {
 
 export function CommentsSection({ workoutId }: CommentsSectionProps) {
   const { reviews, addReview } = useData()
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const [newComment, setNewComment] = useState('')
   const [rating, setRating] = useState(5)
 
@@ -37,6 +38,20 @@ export function CommentsSection({ workoutId }: CommentsSectionProps) {
       rating,
       comment: newComment,
     })
+
+    // Gamification Logic
+    const newPoints = (user.points || 0) + 5
+    const newBadges = [...(user.badges || [])]
+
+    // Mock check for social badge (usually would check review count)
+    if (!newBadges.includes('social') && Math.random() > 0.7) {
+      newBadges.push('social')
+      toast.success('Nova Conquista: Social! (Contribuiu com a comunidade)')
+    }
+
+    updateUser({ points: newPoints, badges: newBadges })
+    toast.success('Avaliação enviada! (+5 XP)')
+
     setNewComment('')
     setRating(5)
   }

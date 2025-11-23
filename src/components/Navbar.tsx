@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Notifications } from '@/components/Notifications'
+import { ModeToggle } from '@/components/mode-toggle'
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -93,6 +94,7 @@ export function Navbar() {
         </nav>
 
         <div className="hidden md:flex items-center gap-4">
+          <ModeToggle />
           {user ? (
             <>
               <Notifications />
@@ -172,6 +174,7 @@ export function Navbar() {
         </div>
 
         <div className="md:hidden flex items-center gap-2">
+          <ModeToggle />
           {user && <Notifications />}
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
