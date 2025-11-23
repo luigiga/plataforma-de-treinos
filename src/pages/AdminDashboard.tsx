@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, User } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,25 +25,26 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ShieldAlert, Trash2, Ban, CheckCircle, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { toast } from 'sonner'
 
 export default function AdminDashboard() {
   const { user, allUsers, deleteUser, toggleUserStatus } = useAuth()
+  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [userToToggle, setUserToToggle] = useState<User | null>(null)
 
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth?tab=login')
+    } else if (user.role !== 'admin') {
+      toast.error('Acesso não autorizado.')
+      navigate(user.role === 'trainer' ? '/trainer-dashboard' : '/dashboard')
+    }
+  }, [user, navigate])
+
   if (!user || user.role !== 'admin') {
-    return (
-      <div className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold mb-4">Acesso Negado</h1>
-        <p className="text-muted-foreground mb-8">
-          Você não tem permissão para acessar esta página.
-        </p>
-        <Button asChild>
-          <Link to="/">Voltar para Home</Link>
-        </Button>
-      </div>
-    )
+    return null
   }
 
   const filteredUsers = allUsers.filter(

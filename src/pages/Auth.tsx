@@ -22,7 +22,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form'
 
 const loginSchema = z.object({
@@ -53,7 +52,13 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate(user.role === 'trainer' ? '/trainer-dashboard' : '/dashboard')
+      if (user.role === 'admin') {
+        navigate('/admin-dashboard')
+      } else if (user.role === 'trainer') {
+        navigate('/trainer-dashboard')
+      } else {
+        navigate('/dashboard')
+      }
     }
   }, [user, navigate])
 
@@ -78,7 +83,7 @@ export default function Auth() {
     const success = await login(data.email, role)
     if (!success) {
       loginForm.setError('root', {
-        message: 'Falha no login. Verifique suas credenciais e tipo de conta.',
+        message: 'Falha no login. Verifique suas credenciais.',
       })
     }
   }

@@ -97,17 +97,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = useCallback(
     async (email: string, role: UserRole): Promise<boolean> => {
-      logger.info(`Login attempt for ${email} with role ${role}`)
+      logger.info(`Login attempt for ${email}`)
 
       const existingUser = allUsers.find((u) => u.email === email)
 
       if (existingUser) {
-        if (existingUser.role !== role) {
-          const errorMsg = `Erro de Login: Esta conta está registrada como ${existingUser.role}.`
-          logger.warn(`Login failed: Role mismatch for ${email}`)
-          toast.error(errorMsg)
-          return false
-        }
+        // We ignore the passed role if the user exists, to allow auto-detection
+        // This enables Admin login via the standard form (which might send 'subscriber')
 
         if (existingUser.status === 'inactive') {
           const errorMsg = 'Conta desativada. Entre em contato com o suporte.'
