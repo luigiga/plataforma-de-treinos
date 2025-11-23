@@ -110,7 +110,13 @@ export default function CreateEditWorkout() {
       status: 'published' as const,
       exercises: data.exercises.map((e, i) => ({ ...e, id: `new-${i}` })),
     }
-    isEditing && id ? updateWorkout(id, workoutData) : addWorkout(workoutData)
+
+    if (isEditing && id) {
+      updateWorkout(id, workoutData)
+    } else {
+      addWorkout(workoutData)
+    }
+
     navigate('/trainer-dashboard')
   }
 
