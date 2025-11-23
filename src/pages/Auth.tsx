@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -23,6 +23,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { useDebounce } from '@/hooks/use-debounce'
+import { Loader2, Check, X } from 'lucide-react'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -83,6 +85,7 @@ export default function Auth() {
 
   const registerForm = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
+    mode: 'onChange',
     defaultValues: {
       username: '',
       name: '',
@@ -92,6 +95,46 @@ export default function Auth() {
       isTrainer: defaultRole,
     },
   })
+
+  // Username availability check logic
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
+    null,
+  )
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
+  const watchedUsername = registerForm.watch('username')
+  const debouncedUsername = useDebounce(watchedUsername, 500)
+
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (!debouncedUsername || debouncedUsername.length < 3) {
+        setUsernameAvailable(null)
+        return
+      }
+
+      // Check regex first to avoid unnecessary API calls
+      const regex = /^[a-zA-Z0-9_]+$/
+      if (!regex.test(debouncedUsername)) {
+        setUsernameAvailable(null)
+        return
+      }
+
+      setIsCheckingUsername(true)
+      const isAvailable = await checkUsernameAvailability(debouncedUsername)
+      setUsernameAvailable(isAvailable)
+      setIsCheckingUsername(false)
+
+      if (!isAvailable) {
+        registerForm.setError('username', {
+          type: 'manual',
+          message: 'Nome de usuário indisponível.',
+        })
+      } else {
+        registerForm.clearErrors('username')
+      }
+    }
+
+    checkAvailability()
+  }, [debouncedUsername, checkUsernameAvailability, registerForm])
 
   async function onLogin(data: z.infer<typeof loginSchema>) {
     const { error } = await login(data.email, data.password)
@@ -103,8 +146,8 @@ export default function Auth() {
   }
 
   async function onRegister(data: z.infer<typeof registerSchema>) {
-    const isAvailable = await checkUsernameAvailability(data.username)
-    if (!isAvailable) {
+    // Final check before submission
+    if (usernameAvailable === false) {
       registerForm.setError('username', {
         message: 'Este nome de usuário já está em uso.',
       })
@@ -223,14 +266,41 @@ export default function Auth() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Username</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="seu_username"
-                            autoComplete="username"
-                            {...field}
-                          />
-                        </FormControl>
+                        <div className="relative">
+                          <FormControl>
+                            <Input
+                              placeholder="seu_username"
+                              autoComplete="username"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e)
+                                // Reset availability state on change to trigger debounce effect
+                                if (usernameAvailable !== null)
+                                  setUsernameAvailable(null)
+                              }}
+                            />
+                          </FormControl>
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {isCheckingUsername && (
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
+                            {!isCheckingUsername &&
+                              usernameAvailable === true && (
+                                <Check className="h-4 w-4 text-green-500" />
+                              )}
+                            {!isCheckingUsername &&
+                              usernameAvailable === false && (
+                                <X className="h-4 w-4 text-destructive" />
+                              )}
+                          </div>
+                        </div>
                         <FormMessage />
+                        {usernameAvailable === true &&
+                          !registerForm.formState.errors.username && (
+                            <p className="text-xs text-green-500 font-medium mt-1">
+                              Nome de usuário disponível!
+                            </p>
+                          )}
                       </FormItem>
                     )}
                   />
@@ -319,7 +389,10 @@ export default function Auth() {
                   <Button
                     type="submit"
                     className="w-full rounded-xl h-12 text-lg"
-                    disabled={registerForm.formState.isSubmitting}
+                    disabled={
+                      registerForm.formState.isSubmitting ||
+                      usernameAvailable === false
+                    }
                   >
                     {registerForm.formState.isSubmitting
                       ? 'Criando Conta...'
