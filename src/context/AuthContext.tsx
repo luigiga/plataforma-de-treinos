@@ -8,6 +8,8 @@ import React, {
 } from 'react'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
+import { supabase } from '@/lib/supabase/client'
+import { Session } from '@supabase/supabase-js'
 
 export type UserRole = 'subscriber' | 'trainer' | 'admin'
 export type SubscriptionStatus = 'active' | 'inactive' | 'canceled'
@@ -47,191 +49,209 @@ interface AuthContextType {
   updateUser: (data: Partial<User>) => void
   deleteUser: (id: string) => void
   toggleUserStatus: (id: string) => void
+  loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const MOCK_USERS: User[] = [
-  {
-    id: '0',
-    name: 'Administrador',
-    email: 'admin@example.com',
-    role: 'admin',
-    avatar: 'https://img.usecurling.com/ppl/medium?gender=male&seed=admin',
-    status: 'active',
-    plan: 'vip',
-    bio: 'Gerente da Plataforma',
-    points: 0,
-    badges: [],
-  },
-  {
-    id: '1',
-    name: 'João Subscriber',
-    email: 'user@fit.com',
-    role: 'subscriber',
-    avatar: 'https://img.usecurling.com/ppl/medium?gender=male&seed=1',
-    preferences: ['Hipertrofia', 'Força'],
-    subscriptionStatus: 'active',
-    plan: 'premium',
-    status: 'active',
-    bio: 'Focado em superar limites.',
-    socialLinks: { instagram: '@joao.fit' },
-    points: 350,
-    badges: ['beginner', 'focused'],
-  },
-  {
-    id: '2',
-    name: 'Maria Trainer',
-    email: 'trainer@fit.com',
-    role: 'trainer',
-    avatar: 'https://img.usecurling.com/ppl/medium?gender=female&seed=2',
-    bio: 'Especialista em Yoga e Funcional. Transformando vidas através do movimento.',
-    subscriptionStatus: 'active',
-    plan: 'vip',
-    status: 'active',
-    socialLinks: { instagram: '@maria.yoga', website: 'www.mariayoga.com' },
-    points: 0,
-    badges: [],
-  },
-]
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [allUsers, setAllUsers] = useState<User[]>(() => {
-    const storedUsers = localStorage.getItem('pt_platform_users_db')
-    return storedUsers ? JSON.parse(storedUsers) : MOCK_USERS
+  const [user, setUser] = useState<User | null>(null)
+  const [allUsers, setAllUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [session, setSession] = useState<Session | null>(null)
+
+  const mapProfileToUser = (profile: any): User => ({
+    id: profile.id,
+    name: profile.full_name || profile.username || 'User',
+    email: profile.email || '',
+    role: (profile.role as UserRole) || 'subscriber',
+    avatar: profile.avatar_url,
+    bio: profile.bio,
+    socialLinks: profile.metadata?.socialLinks,
+    preferences: profile.metadata?.preferences,
+    subscriptionStatus: profile.metadata?.subscriptionStatus || 'inactive',
+    plan: profile.metadata?.plan || 'free',
+    status: profile.metadata?.status || 'active',
+    points: profile.metadata?.points || 0,
+    badges: profile.metadata?.badges || [],
   })
 
-  const [user, setUser] = useState<User | null>(() => {
-    const storedUser = localStorage.getItem('pt_platform_user')
-    return storedUser ? JSON.parse(storedUser) : null
-  })
+  const fetchProfile = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    if (error) {
+      logger.error('Error fetching profile', error)
+      return null
+    }
+    return mapProfileToUser(data)
+  }
+
+  const fetchAllUsers = async () => {
+    const { data, error } = await supabase.from('profiles').select('*')
+    if (error) {
+      logger.error('Error fetching all users', error)
+      return
+    }
+    setAllUsers(data.map(mapProfileToUser))
+  }
 
   useEffect(() => {
-    localStorage.setItem('pt_platform_users_db', JSON.stringify(allUsers))
-  }, [allUsers])
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      if (session?.user) {
+        fetchProfile(session.user.id).then(setUser)
+      } else {
+        setLoading(false)
+      }
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      if (session?.user) {
+        fetchProfile(session.user.id).then((u) => {
+          setUser(u)
+          setLoading(false)
+        })
+      } else {
+        setUser(null)
+        setLoading(false)
+      }
+    })
+
+    fetchAllUsers()
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   const login = useCallback(
     async (
       email: string,
       password: string,
-      role: UserRole,
+      _role: UserRole,
     ): Promise<boolean> => {
-      logger.info(`Login attempt for ${email}`)
-      if (email === 'admin@example.com') {
-        if (password !== 'admin123') {
-          toast.error('Credenciais inválidas.')
-          return false
-        }
-        let adminUser = allUsers.find((u) => u.email === 'admin@example.com')
-        if (!adminUser) {
-          adminUser = MOCK_USERS[0]
-          setAllUsers((prev) => [...prev, adminUser!])
-        }
-        setUser(adminUser)
-        localStorage.setItem('pt_platform_user', JSON.stringify(adminUser))
-        toast.success(`Bem-vindo de volta, ${adminUser.name}!`)
-        return true
-      }
-
-      const existingUser = allUsers.find((u) => u.email === email)
-      if (existingUser) {
-        if (existingUser.status === 'inactive') {
-          toast.error('Conta desativada. Entre em contato com o suporte.')
-          return false
-        }
-        setUser(existingUser)
-        localStorage.setItem('pt_platform_user', JSON.stringify(existingUser))
-        toast.success(`Bem-vindo de volta, ${existingUser.name}!`)
-        return true
-      }
-
-      const newUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: email.split('@')[0],
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        role,
-        avatar: `https://img.usecurling.com/ppl/medium?gender=male&seed=${Math.random()}`,
-        preferences: role === 'subscriber' ? ['Geral'] : undefined,
-        subscriptionStatus: 'inactive',
-        plan: 'free',
-        status: 'active',
-        points: 0,
-        badges: ['beginner'],
+        password,
+      })
+      if (error) {
+        toast.error(error.message)
+        return false
       }
-      setAllUsers((prev) => [...prev, newUser])
-      setUser(newUser)
-      localStorage.setItem('pt_platform_user', JSON.stringify(newUser))
-      toast.success(`Bem-vindo, ${newUser.name}!`)
+      toast.success('Login realizado com sucesso!')
       return true
     },
-    [allUsers],
+    [],
   )
 
-  const register = useCallback((data: Partial<User>) => {
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: data.name || 'Novo Usuário',
-      email: data.email || 'user@example.com',
-      role: data.role || 'subscriber',
-      avatar: `https://img.usecurling.com/ppl/medium?gender=${Math.random() > 0.5 ? 'male' : 'female'}`,
-      bio: data.bio,
-      preferences: data.role === 'subscriber' ? ['Geral'] : undefined,
-      subscriptionStatus: 'inactive',
-      plan: 'free',
-      status: 'active',
-      points: 0,
-      badges: ['beginner'],
+  const register = useCallback(async (data: Partial<User>) => {
+    const { error } = await supabase.auth.signUp({
+      email: data.email!,
+      password: 'password123', // In a real app, password should come from form
+      options: {
+        data: {
+          full_name: data.name,
+          role: data.role,
+          avatar_url: data.avatar,
+          bio: data.bio,
+        },
+      },
+    })
+    if (error) {
+      toast.error(error.message)
+    } else {
+      toast.success('Conta criada! Verifique seu email.')
     }
-    setAllUsers((prev) => [...prev, newUser])
-    setUser(newUser)
-    localStorage.setItem('pt_platform_user', JSON.stringify(newUser))
-    toast.success('Conta criada com sucesso!')
   }, [])
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut()
     setUser(null)
-    localStorage.removeItem('pt_platform_user')
     toast.info('Você saiu da conta.')
   }, [])
 
   const updateUser = useCallback(
-    (data: Partial<User>) => {
+    async (data: Partial<User>) => {
       if (!user) return
-      const updatedUser = { ...user, ...data }
-      setUser(updatedUser)
-      setAllUsers((prev) =>
-        prev.map((u) => (u.id === user.id ? updatedUser : u)),
-      )
-      localStorage.setItem('pt_platform_user', JSON.stringify(updatedUser))
-      // Only show toast if not just updating points silently
-      if (!data.points) {
-        toast.success('Perfil atualizado!')
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: data.name,
+          bio: data.bio,
+          avatar_url: data.avatar,
+          metadata: {
+            socialLinks: data.socialLinks || user.socialLinks,
+            preferences: data.preferences || user.preferences,
+            subscriptionStatus:
+              data.subscriptionStatus || user.subscriptionStatus,
+            plan: data.plan || user.plan,
+            status: data.status || user.status,
+            points: data.points !== undefined ? data.points : user.points,
+            badges: data.badges || user.badges,
+          },
+        })
+        .eq('id', user.id)
+
+      if (error) {
+        toast.error('Erro ao atualizar perfil')
+      } else {
+        const updatedUser = { ...user, ...data }
+        setUser(updatedUser)
+        setAllUsers((prev) =>
+          prev.map((u) => (u.id === user.id ? updatedUser : u)),
+        )
+        if (!data.points) toast.success('Perfil atualizado!')
       }
     },
     [user],
   )
 
-  const deleteUser = useCallback((id: string) => {
-    setAllUsers((prev) => prev.filter((u) => u.id !== id))
-    toast.success('Usuário excluído com sucesso.')
+  const deleteUser = useCallback(async (id: string) => {
+    // Client-side deletion of auth user is not allowed usually.
+    // We can delete the profile, but auth user remains.
+    // For this demo, we'll just delete the profile.
+    const { error } = await supabase.from('profiles').delete().eq('id', id)
+    if (error) {
+      toast.error('Erro ao excluir usuário')
+    } else {
+      setAllUsers((prev) => prev.filter((u) => u.id !== id))
+      toast.success('Usuário excluído com sucesso.')
+    }
   }, [])
 
-  const toggleUserStatus = useCallback((id: string) => {
-    setAllUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === id) {
-          const newStatus = u.status === 'active' ? 'inactive' : 'active'
-          toast.success(
-            `Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'}.`,
-          )
-          return { ...u, status: newStatus }
-        }
-        return u
-      }),
-    )
-  }, [])
+  const toggleUserStatus = useCallback(
+    async (id: string) => {
+      const targetUser = allUsers.find((u) => u.id === id)
+      if (!targetUser) return
+
+      const newStatus = targetUser.status === 'active' ? 'inactive' : 'active'
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          metadata: { ...targetUser, status: newStatus }, // Simplified metadata update
+        })
+        .eq('id', id)
+
+      if (error) {
+        toast.error('Erro ao atualizar status')
+      } else {
+        setAllUsers((prev) =>
+          prev.map((u) => (u.id === id ? { ...u, status: newStatus } : u)),
+        )
+        toast.success(
+          `Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'}.`,
+        )
+      }
+    },
+    [allUsers],
+  )
 
   const value = useMemo(
     () => ({
@@ -244,6 +264,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       updateUser,
       deleteUser,
       toggleUserStatus,
+      loading,
     }),
     [
       user,
@@ -254,6 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       updateUser,
       deleteUser,
       toggleUserStatus,
+      loading,
     ],
   )
 

@@ -23,6 +23,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { supabase } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -46,7 +48,7 @@ const registerSchema = z
 export default function Auth() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { login, register, user } = useAuth()
+  const { login, user } = useAuth()
   const defaultTab = searchParams.get('tab') || 'login'
   const defaultRole = searchParams.get('role') === 'trainer'
 
@@ -83,12 +85,32 @@ export default function Auth() {
       })
   }
 
-  function onRegister(data: z.infer<typeof registerSchema>) {
-    register({
-      name: data.name,
+  async function onRegister(data: z.infer<typeof registerSchema>) {
+    const { error } = await supabase.auth.signUp({
       email: data.email,
-      role: data.isTrainer ? 'trainer' : 'subscriber',
+      password: data.password,
+      options: {
+        data: {
+          full_name: data.name,
+          role: data.isTrainer ? 'trainer' : 'subscriber',
+          avatar_url: `https://img.usecurling.com/ppl/medium?gender=${Math.random() > 0.5 ? 'male' : 'female'}`,
+        },
+      },
     })
+
+    if (error) {
+      toast.error(error.message)
+    } else {
+      toast.success('Conta criada! Você já pode fazer login.')
+      // Auto login or redirect to login tab
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
+      if (!loginError) {
+        // Navigation handled by useEffect
+      }
+    }
   }
 
   return (

@@ -9,6 +9,7 @@ import React, {
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 import { SocialLinks } from './AuthContext'
+import { supabase } from '@/lib/supabase/client'
 
 export interface Exercise {
   id: string
@@ -178,32 +179,6 @@ const INITIAL_WORKOUTS: Workout[] = [
   },
 ]
 
-const INITIAL_PUBLIC_USERS: PublicUser[] = [
-  {
-    id: '101',
-    name: 'Carlos Silva',
-    role: 'trainer',
-    avatar: 'https://img.usecurling.com/ppl/medium?gender=male&seed=101',
-    bio: 'Especialista em Hipertrofia',
-    socialLinks: { instagram: '@carlos.fit' },
-  },
-  {
-    id: '102',
-    name: 'Ana Souza',
-    role: 'trainer',
-    avatar: 'https://img.usecurling.com/ppl/medium?gender=female&seed=102',
-    bio: 'Yoga e Bem-estar',
-    socialLinks: { instagram: '@ana.yoga', website: 'anayoga.com' },
-  },
-  {
-    id: 'u1',
-    name: 'João Paulo',
-    role: 'subscriber',
-    avatar: 'https://img.usecurling.com/ppl/medium?gender=male&seed=10',
-    bio: 'Focado em resultados',
-  },
-]
-
 const INITIAL_FOLLOWING = [{ followerId: 'u1', followingId: '101' }]
 
 const INITIAL_MESSAGES: Message[] = [
@@ -224,10 +199,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [reviews, setReviews] = useState<Review[]>([])
   const [progressLogs, setProgressLogs] = useState<ProgressLog[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [publicUsers] = useState<PublicUser[]>(INITIAL_PUBLIC_USERS)
+  const [publicUsers, setPublicUsers] = useState<PublicUser[]>([])
   const [following, setFollowing] = useState(INITIAL_FOLLOWING)
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES)
+
+  useEffect(() => {
+    const fetchPublicUsers = async () => {
+      const { data, error } = await supabase.from('profiles').select('*')
+      if (!error && data) {
+        setPublicUsers(
+          data.map((p) => ({
+            id: p.id,
+            name: p.full_name || p.username,
+            role: p.role as 'subscriber' | 'trainer',
+            avatar: p.avatar_url,
+            bio: p.bio,
+            socialLinks: p.metadata?.socialLinks,
+          })),
+        )
+      }
+    }
+    fetchPublicUsers()
+  }, [])
 
   // Simulate Push Notifications
   useEffect(() => {
@@ -246,7 +240,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         toast.info('Nova Notificação: Novo treino de Yoga disponível!')
         return [newNotif, ...prev]
       })
-    }, 10000) // 10 seconds after load
+    }, 10000)
     return () => clearTimeout(timer)
   }, [])
 
@@ -401,11 +395,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         read: false,
       }
       setMessages((prev) => [...prev, newMessage])
-      // Simulate push notification for receiver
-      if (receiverId !== '1') {
-        // Don't notify mock user if they are sender
-        // In real app, this would go to backend
-      }
     },
     [],
   )
