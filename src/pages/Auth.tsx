@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -23,7 +23,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { toast } from 'sonner'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -46,8 +45,19 @@ const registerSchema = z
 export default function Auth() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { login, register, user } = useAuth()
-  const defaultTab = searchParams.get('tab') || 'login'
+
+  // Determine default tab based on path or query param
+  let defaultTab = searchParams.get('tab')
+  if (!defaultTab) {
+    if (location.pathname === '/register' || location.pathname === '/signup') {
+      defaultTab = 'register'
+    } else {
+      defaultTab = 'login'
+    }
+  }
+
   const defaultRole = searchParams.get('role') === 'trainer'
 
   useEffect(() => {
@@ -90,14 +100,12 @@ export default function Auth() {
       avatar: `https://img.usecurling.com/ppl/medium?gender=${Math.random() > 0.5 ? 'male' : 'female'}`,
     })
 
-    if (!error) {
-      // Auto login after registration
-      const { error: loginError } = await login(data.email, data.password)
-      if (loginError) {
-        toast.error('Erro ao fazer login automático. Tente entrar manualmente.')
-        setSearchParams({ tab: 'login' })
-      }
+    if (error) {
+      registerForm.setError('root', {
+        message: error.message || 'Erro ao criar conta. Tente novamente.',
+      })
     }
+    // If successful, AuthContext handles toast and redirection via useEffect if session is established
   }
 
   const handleTabChange = (value: string) => {
@@ -268,6 +276,11 @@ export default function Auth() {
                       </FormItem>
                     )}
                   />
+                  {registerForm.formState.errors.root && (
+                    <p className="text-sm text-destructive">
+                      {registerForm.formState.errors.root.message}
+                    </p>
+                  )}
                   <Button
                     type="submit"
                     className="w-full rounded-xl h-12 text-lg"

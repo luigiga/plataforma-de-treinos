@@ -9,7 +9,7 @@ import React, {
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase/client'
-import { Session } from '@supabase/supabase-js'
+import { Session, AuthResponse } from '@supabase/supabase-js'
 
 export type UserRole = 'subscriber' | 'trainer' | 'admin'
 export type SubscriptionStatus = 'active' | 'inactive' | 'canceled'
@@ -50,7 +50,7 @@ interface AuthContextType {
     email: string,
     password: string,
     data: Partial<User>,
-  ) => Promise<{ error: any }>
+  ) => Promise<{ data?: AuthResponse['data']; error: any }>
   logout: () => Promise<void>
   updateUser: (data: Partial<User>) => Promise<{ error: any }>
   deleteUser: (id: string) => Promise<void>
@@ -157,7 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const register = useCallback(
     async (email: string, password: string, data: Partial<User>) => {
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -171,10 +171,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       })
       if (error) {
         toast.error(error.message)
-        return { error }
+        return { data: authData, error }
       } else {
-        toast.success('Conta criada! Verifique seu email.')
-        return { error: null }
+        if (authData.session) {
+          toast.success('Conta criada com sucesso!')
+        } else {
+          toast.success('Conta criada! Verifique seu email para confirmar.')
+        }
+        return { data: authData, error: null }
       }
     },
     [],
