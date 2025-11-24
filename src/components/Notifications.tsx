@@ -15,9 +15,8 @@ export function Notifications() {
   const { notifications, markNotificationAsRead } = useData()
   const { user } = useAuth()
 
-  const userNotifications = notifications.filter(
-    (n) => n.userId === user?.id || n.userId === 'all' || n.userId === '1',
-  )
+  // Filter notifications for the current user
+  const userNotifications = notifications.filter((n) => n.userId === user?.id)
 
   const unreadCount = userNotifications.filter((n) => !n.read).length
 

@@ -1,24 +1,50 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useData } from '@/context/DataContext'
+import { useData, PublicUser } from '@/context/DataContext'
 import { useAuth } from '@/context/AuthContext'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Search, UserPlus, UserCheck, ExternalLink } from 'lucide-react'
+import {
+  Search,
+  UserPlus,
+  UserCheck,
+  ExternalLink,
+  Loader2,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { useDebounce } from '@/hooks/use-debounce'
 
 export default function Social() {
-  const { publicUsers, followUser, unfollowUser, isFollowing } = useData()
+  const { publicUsers, followUser, unfollowUser, isFollowing, searchUsers } =
+    useData()
   const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState<PublicUser[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const debouncedSearch = useDebounce(searchTerm, 500)
 
-  const filteredUsers = publicUsers.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      u.id !== user?.id, // Don't show self
-  )
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!debouncedSearch) {
+        setSearchResults(publicUsers)
+        return
+      }
+
+      setIsSearching(true)
+      try {
+        const results = await searchUsers(debouncedSearch)
+        setSearchResults(results)
+      } catch (error) {
+        console.error('Search error:', error)
+      } finally {
+        setIsSearching(false)
+      }
+    }
+
+    performSearch()
+  }, [debouncedSearch, publicUsers, searchUsers])
 
   const handleFollowToggle = (targetUserId: string) => {
     if (!user) return
@@ -28,6 +54,8 @@ export default function Social() {
       followUser(user.id, targetUserId)
     }
   }
+
+  const displayUsers = searchResults.filter((u) => u.id !== user?.id)
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
@@ -43,15 +71,18 @@ export default function Social() {
       <div className="max-w-md mx-auto mb-8 relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
-          placeholder="Buscar usuários..."
+          placeholder="Buscar por nome, username ou email..."
           className="pl-10 rounded-full"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+        {isSearching && (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-primary h-4 w-4 animate-spin" />
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredUsers.map((publicUser) => {
+        {displayUsers.map((publicUser) => {
           const isFollowed = user ? isFollowing(user.id, publicUser.id) : false
           return (
             <Card
@@ -122,7 +153,7 @@ export default function Social() {
         })}
       </div>
 
-      {filteredUsers.length === 0 && (
+      {displayUsers.length === 0 && !isSearching && (
         <div className="text-center py-12 text-muted-foreground">
           Nenhum usuário encontrado.
         </div>

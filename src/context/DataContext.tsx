@@ -7,8 +7,11 @@ import React, {
   useEffect,
 } from 'react'
 import { toast } from 'sonner'
-import { SocialLinks } from './AuthContext'
+import { SocialLinks, useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase/client'
+import { notificationService } from '@/services/notifications'
+import { workoutService } from '@/services/workouts'
+import { socialService } from '@/services/social'
 
 export interface Exercise {
   id: string
@@ -123,93 +126,42 @@ interface DataContextType {
   isFollowing: (followerId: string, followingId: string) => boolean
   assignWorkout: (userId: string, trainerId: string, workoutId: string) => void
   sendMessage: (senderId: string, receiverId: string, content: string) => void
+  searchUsers: (query: string) => Promise<PublicUser[]>
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
 
-const INITIAL_WORKOUTS: Workout[] = [
-  {
-    id: '1',
-    trainerId: '101',
-    trainerName: 'Carlos Silva',
-    title: 'Hipertrofia Total',
-    description:
-      'Um treino focado em ganho de massa muscular para o corpo todo.',
-    image: 'https://img.usecurling.com/p/800/600?q=gym%20workout',
-    duration: 60,
-    difficulty: 'Avançado',
-    category: ['Força', 'Hipertrofia'],
-    status: 'published',
-    createdAt: new Date().toISOString(),
-    isCircuit: false,
-    exercises: [
-      {
-        id: 'e1',
-        name: 'Supino Reto',
-        sets: '4',
-        reps: '10',
-        instructions: 'Mantenha os cotovelos a 45 graus.',
-        videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
-        variations: [{ name: 'Supino Inclinado', sets: '3', reps: '12' }],
-      },
-    ],
-  },
-  {
-    id: '2',
-    trainerId: '102',
-    trainerName: 'Ana Souza',
-    title: 'Yoga Matinal',
-    description: 'Comece o dia com energia e flexibilidade.',
-    image: 'https://img.usecurling.com/p/800/600?q=yoga%20pose',
-    duration: 30,
-    difficulty: 'Iniciante',
-    category: ['Yoga', 'Flexibilidade'],
-    status: 'published',
-    createdAt: new Date().toISOString(),
-    isCircuit: false,
-    exercises: [
-      {
-        id: 'e3',
-        name: 'Saudação ao Sol',
-        sets: '3',
-        reps: '1 min',
-        instructions: 'Flua com a respiração.',
-      },
-    ],
-  },
-]
-
-const INITIAL_FOLLOWING = [{ followerId: 'u1', followingId: '101' }]
-
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: 'm1',
-    senderId: 'u1',
-    receiverId: '101',
-    content: 'Olá Carlos, adorei o treino de ontem!',
-    timestamp: new Date(Date.now() - 86400000).toISOString(),
-    read: false,
-  },
-]
-
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [workouts, setWorkouts] = useState<Workout[]>(INITIAL_WORKOUTS)
+  const { user } = useAuth()
+  const [workouts, setWorkouts] = useState<Workout[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
   const [progressLogs, setProgressLogs] = useState<ProgressLog[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [publicUsers, setPublicUsers] = useState<PublicUser[]>([])
-  const [following, setFollowing] = useState(INITIAL_FOLLOWING)
+  const [following, setFollowing] = useState<
+    { followerId: string; followingId: string }[]
+  >([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES)
+  const [messages, setMessages] = useState<Message[]>([])
 
-  useEffect(() => {
-    const fetchPublicUsers = async () => {
-      const { data, error } = await supabase.from('profiles').select('*')
-      if (!error && data) {
+  const refreshData = useCallback(async () => {
+    try {
+      const [wData, rData, fData] = await Promise.all([
+        workoutService.fetchWorkouts(),
+        workoutService.fetchReviews(),
+        socialService.fetchFollows(),
+      ])
+      setWorkouts(wData)
+      setReviews(rData)
+      setFollowing(fData)
+
+      // Fetch public users
+      const { data: uData } = await supabase.from('profiles').select('*')
+      if (uData) {
         setPublicUsers(
-          data.map((p) => ({
+          uData.map((p) => ({
             id: p.id,
             username: p.username || '',
             name: p.full_name || p.username,
@@ -220,56 +172,128 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
           })),
         )
       }
+    } catch (error) {
+      console.error('Error fetching data:', error)
     }
-    fetchPublicUsers()
   }, [])
 
-  // Simulate Push Notifications
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const newNotif: Notification = {
-        id: 'sim-1',
-        userId: 'all',
-        message: 'Novo treino de Yoga disponível!',
-        read: false,
-        createdAt: new Date().toISOString(),
-        type: 'info',
-        link: '/workout/2',
-      }
-      setNotifications((prev) => {
-        if (prev.find((n) => n.id === 'sim-1')) return prev
-        toast.info('Nova Notificação: Novo treino de Yoga disponível!')
-        return [newNotif, ...prev]
-      })
-    }, 10000)
-    return () => clearTimeout(timer)
-  }, [])
+    refreshData()
+  }, [refreshData])
+
+  useEffect(() => {
+    if (user) {
+      notificationService.fetchNotifications(user.id).then(setNotifications)
+
+      // Fetch user specific data
+      supabase
+        .from('progress_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .then(({ data }) => {
+          if (data) {
+            setProgressLogs(
+              data.map((l: any) => ({
+                id: l.id,
+                userId: l.user_id,
+                workoutId: l.workout_id,
+                workoutTitle: l.workout_title,
+                date: l.date,
+                duration: l.duration,
+                notes: l.notes,
+              })),
+            )
+          }
+        })
+
+      supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .then(({ data }) => {
+          if (data) {
+            setMessages(
+              data.map((m: any) => ({
+                id: m.id,
+                senderId: m.sender_id,
+                receiverId: m.receiver_id,
+                content: m.content,
+                timestamp: m.created_at,
+                read: m.read,
+              })),
+            )
+          }
+        })
+
+      supabase
+        .from('assignments')
+        .select('*')
+        .or(`user_id.eq.${user.id},trainer_id.eq.${user.id}`)
+        .then(({ data }) => {
+          if (data) {
+            setAssignments(
+              data.map((a: any) => ({
+                id: a.id,
+                userId: a.user_id,
+                trainerId: a.trainer_id,
+                workoutId: a.workout_id,
+                assignedAt: a.assigned_at,
+                status: a.status,
+              })),
+            )
+          }
+        })
+    }
+  }, [user])
 
   const addWorkout = useCallback(
-    (workoutData: Omit<Workout, 'id' | 'createdAt' | 'trainerName'>) => {
-      const newWorkout: Workout = {
-        ...workoutData,
-        id: Math.random().toString(36).substr(2, 9),
-        createdAt: new Date().toISOString(),
-        trainerName: 'Você',
+    async (workoutData: Omit<Workout, 'id' | 'createdAt' | 'trainerName'>) => {
+      try {
+        await workoutService.createWorkout(workoutData)
+        refreshData()
+        toast.success('Treino criado com sucesso!')
+      } catch (error: any) {
+        toast.error('Erro ao criar treino: ' + error.message)
       }
-      setWorkouts((prev) => [...prev, newWorkout])
-      toast.success('Treino criado com sucesso!')
     },
-    [],
+    [refreshData],
   )
 
-  const updateWorkout = useCallback((id: string, data: Partial<Workout>) => {
-    setWorkouts((prev) =>
-      prev.map((w) => (w.id === id ? { ...w, ...data } : w)),
-    )
-    toast.success('Treino atualizado!')
-  }, [])
+  const updateWorkout = useCallback(
+    async (id: string, data: Partial<Workout>) => {
+      // Simplified update for now
+      const { error } = await supabase
+        .from('workouts')
+        .update({
+          title: data.title,
+          description: data.description,
+          duration: data.duration,
+          difficulty: data.difficulty,
+          status: data.status,
+        })
+        .eq('id', id)
 
-  const deleteWorkout = useCallback((id: string) => {
-    setWorkouts((prev) => prev.filter((w) => w.id !== id))
-    toast.success('Treino excluído.')
-  }, [])
+      if (error) toast.error('Erro ao atualizar')
+      else {
+        refreshData()
+        toast.success('Treino atualizado!')
+      }
+    },
+    [refreshData],
+  )
+
+  const deleteWorkout = useCallback(
+    async (id: string) => {
+      try {
+        await workoutService.deleteWorkout(id)
+        refreshData()
+        toast.success('Treino excluído.')
+      } catch (error) {
+        toast.error('Erro ao excluir treino')
+      }
+    },
+    [refreshData],
+  )
 
   const getWorkoutsByTrainer = useCallback(
     (trainerId: string) => {
@@ -279,16 +303,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   )
 
   const addReview = useCallback(
-    (reviewData: Omit<Review, 'id' | 'createdAt'>) => {
-      const newReview: Review = {
-        ...reviewData,
-        id: Math.random().toString(36).substr(2, 9),
-        createdAt: new Date().toISOString(),
+    async (reviewData: Omit<Review, 'id' | 'createdAt'>) => {
+      try {
+        await workoutService.addReview(reviewData)
+        refreshData()
+        toast.success('Avaliação enviada!')
+      } catch (error) {
+        toast.error('Erro ao enviar avaliação')
       }
-      setReviews((prev) => [newReview, ...prev])
-      toast.success('Avaliação enviada!')
     },
-    [],
+    [refreshData],
   )
 
   const getReviewsByWorkout = useCallback(
@@ -298,14 +322,32 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     [reviews],
   )
 
-  const addProgressLog = useCallback((logData: Omit<ProgressLog, 'id'>) => {
-    const newLog: ProgressLog = {
-      ...logData,
-      id: Math.random().toString(36).substr(2, 9),
-    }
-    setProgressLogs((prev) => [newLog, ...prev])
-    toast.success('Progresso registrado!')
-  }, [])
+  const addProgressLog = useCallback(
+    async (logData: Omit<ProgressLog, 'id'>) => {
+      const { error } = await supabase.from('progress_logs').insert({
+        user_id: logData.userId,
+        workout_id: logData.workoutId,
+        workout_title: logData.workoutTitle,
+        duration: logData.duration,
+        notes: logData.notes,
+      })
+
+      if (error) toast.error('Erro ao salvar progresso')
+      else {
+        // Optimistic update
+        setProgressLogs((prev) => [
+          {
+            ...logData,
+            id: Math.random().toString(),
+            date: new Date().toISOString(),
+          },
+          ...prev,
+        ])
+        toast.success('Progresso registrado!')
+      }
+    },
+    [],
+  )
 
   const getUserProgress = useCallback(
     (userId: string) => {
@@ -314,48 +356,67 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     [progressLogs],
   )
 
-  const markNotificationAsRead = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    )
+  const markNotificationAsRead = useCallback(async (id: string) => {
+    try {
+      await notificationService.markAsRead(id)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+      )
+    } catch (error) {
+      console.error(error)
+    }
   }, [])
 
   const addNotification = useCallback(
-    (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
-      const newNotification: Notification = {
-        ...notification,
-        id: Math.random().toString(36).substr(2, 9),
-        createdAt: new Date().toISOString(),
-        read: false,
+    async (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
+      try {
+        await notificationService.create(notification)
+        // Realtime subscription would handle this, but for now:
+        if (user && notification.userId === user.id) {
+          setNotifications((prev) => [
+            {
+              ...notification,
+              id: Math.random().toString(),
+              createdAt: new Date().toISOString(),
+              read: false,
+            },
+            ...prev,
+          ])
+        }
+      } catch (error) {
+        console.error(error)
       }
-      setNotifications((prev) => [newNotification, ...prev])
-      toast(newNotification.message)
+    },
+    [user],
+  )
+
+  const followUser = useCallback(
+    async (followerId: string, followingId: string) => {
+      try {
+        await socialService.follow(followerId, followingId)
+        setFollowing((prev) => [...prev, { followerId, followingId }])
+        toast.success('Você começou a seguir este usuário!')
+      } catch (error) {
+        toast.error('Erro ao seguir usuário')
+      }
     },
     [],
   )
 
-  const followUser = useCallback((followerId: string, followingId: string) => {
-    setFollowing((prev) => {
-      if (
-        prev.some(
-          (f) => f.followerId === followerId && f.followingId === followingId,
-        )
-      )
-        return prev
-      return [...prev, { followerId, followingId }]
-    })
-    toast.success('Você começou a seguir este usuário!')
-  }, [])
-
   const unfollowUser = useCallback(
-    (followerId: string, followingId: string) => {
-      setFollowing((prev) =>
-        prev.filter(
-          (f) =>
-            !(f.followerId === followerId && f.followingId === followingId),
-        ),
-      )
-      toast.info('Você deixou de seguir este usuário.')
+    async (followerId: string, followingId: string) => {
+      try {
+        await socialService.unfollow(followerId, followingId)
+        setFollowing((prev) =>
+          prev.filter(
+            (f) =>
+              !(f.followerId === followerId && f.followingId === followingId),
+          ),
+        )
+        toast.info('Você deixou de seguir este usuário.')
+      } catch (error) {
+        toast.error('Erro ao deixar de seguir')
+      }
     },
     [],
   )
@@ -370,35 +431,61 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   )
 
   const assignWorkout = useCallback(
-    (userId: string, trainerId: string, workoutId: string) => {
-      const newAssignment: Assignment = {
-        id: Math.random().toString(36).substr(2, 9),
-        userId,
-        trainerId,
-        workoutId,
-        assignedAt: new Date().toISOString(),
-        status: 'pending',
+    async (userId: string, trainerId: string, workoutId: string) => {
+      const { error } = await supabase.from('assignments').insert({
+        user_id: userId,
+        trainer_id: trainerId,
+        workout_id: workoutId,
+      })
+
+      if (error) toast.error('Erro ao atribuir treino')
+      else {
+        setAssignments((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(),
+            userId,
+            trainerId,
+            workoutId,
+            assignedAt: new Date().toISOString(),
+            status: 'pending',
+          },
+        ])
+        toast.success('Treino atribuído com sucesso!')
       }
-      setAssignments((prev) => [...prev, newAssignment])
-      toast.success('Treino atribuído com sucesso!')
     },
     [],
   )
 
   const sendMessage = useCallback(
-    (senderId: string, receiverId: string, content: string) => {
-      const newMessage: Message = {
-        id: Math.random().toString(36).substr(2, 9),
-        senderId,
-        receiverId,
+    async (senderId: string, receiverId: string, content: string) => {
+      const { error } = await supabase.from('messages').insert({
+        sender_id: senderId,
+        receiver_id: receiverId,
         content,
-        timestamp: new Date().toISOString(),
-        read: false,
+      })
+
+      if (error) toast.error('Erro ao enviar mensagem')
+      else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(),
+            senderId,
+            receiverId,
+            content,
+            timestamp: new Date().toISOString(),
+            read: false,
+          },
+        ])
       }
-      setMessages((prev) => [...prev, newMessage])
     },
     [],
   )
+
+  const searchUsers = useCallback(async (query: string) => {
+    return await socialService.searchUsers(query)
+  }, [])
 
   const value = useMemo(
     () => ({
@@ -425,6 +512,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       isFollowing,
       assignWorkout,
       sendMessage,
+      searchUsers,
     }),
     [
       workouts,
@@ -450,6 +538,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       isFollowing,
       assignWorkout,
       sendMessage,
+      searchUsers,
     ],
   )
 
