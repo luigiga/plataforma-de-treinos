@@ -69,6 +69,33 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+const defaultNotificationPreferences: NotificationPreferences = {
+  newFollower: true,
+  newMessage: true,
+  workoutAssignment: true,
+  systemUpdates: true,
+}
+
+const mapProfileToUser = (profile: any): User => ({
+  id: profile.id,
+  username: profile.username || '',
+  full_name: profile.full_name || '',
+  name: profile.full_name || profile.username || 'User',
+  email: profile.email || '',
+  role: (profile.role as UserRole) || 'subscriber',
+  avatar: profile.avatar_url,
+  bio: profile.bio,
+  socialLinks: profile.metadata?.socialLinks,
+  preferences: profile.metadata?.preferences,
+  notificationPreferences:
+    profile.metadata?.notificationPreferences || defaultNotificationPreferences,
+  subscriptionStatus: profile.metadata?.subscriptionStatus || 'inactive',
+  plan: profile.metadata?.plan || 'free',
+  status: profile.metadata?.status || 'active',
+  points: profile.metadata?.points || 0,
+  badges: profile.metadata?.badges || [],
+})
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -77,35 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
 
-  const defaultNotificationPreferences: NotificationPreferences = {
-    newFollower: true,
-    newMessage: true,
-    workoutAssignment: true,
-    systemUpdates: true,
-  }
-
-  const mapProfileToUser = (profile: any): User => ({
-    id: profile.id,
-    username: profile.username || '',
-    full_name: profile.full_name || '',
-    name: profile.full_name || profile.username || 'User',
-    email: profile.email || '',
-    role: (profile.role as UserRole) || 'subscriber',
-    avatar: profile.avatar_url,
-    bio: profile.bio,
-    socialLinks: profile.metadata?.socialLinks,
-    preferences: profile.metadata?.preferences,
-    notificationPreferences:
-      profile.metadata?.notificationPreferences ||
-      defaultNotificationPreferences,
-    subscriptionStatus: profile.metadata?.subscriptionStatus || 'inactive',
-    plan: profile.metadata?.plan || 'free',
-    status: profile.metadata?.status || 'active',
-    points: profile.metadata?.points || 0,
-    badges: profile.metadata?.badges || [],
-  })
-
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -117,16 +116,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       return null
     }
     return mapProfileToUser(data)
-  }
+  }, [])
 
-  const fetchAllUsers = async () => {
+  const fetchAllUsers = useCallback(async () => {
     const { data, error } = await supabase.from('profiles').select('*')
     if (error) {
       logger.error('Error fetching all users', error)
       return
     }
     setAllUsers(data.map(mapProfileToUser))
-  }
+  }, [])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -156,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     fetchAllUsers()
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [fetchProfile, fetchAllUsers])
 
   const login = useCallback(
     async (email: string, password: string): Promise<{ error: any }> => {
