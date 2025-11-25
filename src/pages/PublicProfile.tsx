@@ -5,10 +5,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, ArrowLeft, UserX } from 'lucide-react'
+import { Loader2, ArrowLeft, UserX, UserPlus, UserCheck, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '@/context/AuthContext'
+import { useData } from '@/context/DataContext'
 
 interface PublicProfileData {
+  id: string
   username: string
   full_name: string
   bio: string
@@ -20,6 +23,8 @@ export default function PublicProfile() {
   const { username } = useParams<{ username: string }>()
   const [profile, setProfile] = useState<PublicProfileData | null>(null)
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
+  const { followUser, unfollowUser, isFollowing, isPending } = useData()
 
   useEffect(() => {
     async function fetchProfile() {
@@ -28,7 +33,7 @@ export default function PublicProfile() {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('username, full_name, bio, avatar_url, role')
+          .select('id, username, full_name, bio, avatar_url, role')
           .eq('username', username)
           .single()
 
@@ -71,6 +76,22 @@ export default function PublicProfile() {
     )
   }
 
+  const isMe = user?.id === profile.id
+  const following = user ? isFollowing(user.id, profile.id) : false
+  const pending = user ? isPending(user.id, profile.id) : false
+
+  const handleFollowAction = () => {
+    if (!user) {
+      toast.error('Faça login para seguir usuários.')
+      return
+    }
+    if (following || pending) {
+      unfollowUser(user.id, profile.id)
+    } else {
+      followUser(user.id, profile.id)
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-12 max-w-2xl animate-fade-in">
       <Button variant="ghost" asChild className="mb-6 pl-0">
@@ -101,6 +122,30 @@ export default function PublicProfile() {
           </div>
 
           <div className="space-y-6">
+            {!isMe && (
+              <div className="flex justify-center">
+                <Button
+                  onClick={handleFollowAction}
+                  variant={following || pending ? 'outline' : 'default'}
+                  className="w-32"
+                >
+                  {following ? (
+                    <>
+                      <UserCheck className="mr-2 h-4 w-4" /> Seguindo
+                    </>
+                  ) : pending ? (
+                    <>
+                      <X className="mr-2 h-4 w-4" /> Pendente
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="mr-2 h-4 w-4" /> Seguir
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
             <div className="text-center max-w-lg mx-auto">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Sobre

@@ -11,7 +11,7 @@ import { SocialLinks, useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase/client'
 import { notificationService } from '@/services/notifications'
 import { workoutService } from '@/services/workouts'
-import { socialService } from '@/services/social'
+import { socialService, FollowRelation } from '@/services/social'
 
 export interface Exercise {
   id: string
@@ -67,7 +67,7 @@ export interface Notification {
   read: boolean
   createdAt: string
   link?: string
-  type: 'info' | 'success' | 'warning'
+  type: 'info' | 'success' | 'warning' | 'new_follower' | 'workout_assignment'
 }
 
 export interface PublicUser {
@@ -104,7 +104,7 @@ interface DataContextType {
   progressLogs: ProgressLog[]
   notifications: Notification[]
   publicUsers: PublicUser[]
-  following: { followerId: string; followingId: string }[]
+  following: FollowRelation[]
   assignments: Assignment[]
   messages: Message[]
   addWorkout: (
@@ -123,7 +123,10 @@ interface DataContextType {
   ) => void
   followUser: (followerId: string, followingId: string) => void
   unfollowUser: (followerId: string, followingId: string) => void
+  acceptFollowRequest: (followerId: string, followingId: string) => void
+  rejectFollowRequest: (followerId: string, followingId: string) => void
   isFollowing: (followerId: string, followingId: string) => boolean
+  isPending: (followerId: string, followingId: string) => boolean
   assignWorkout: (userId: string, trainerId: string, workoutId: string) => void
   sendMessage: (senderId: string, receiverId: string, content: string) => void
   searchUsers: (query: string) => Promise<PublicUser[]>
@@ -140,9 +143,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [progressLogs, setProgressLogs] = useState<ProgressLog[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [publicUsers, setPublicUsers] = useState<PublicUser[]>([])
-  const [following, setFollowing] = useState<
-    { followerId: string; followingId: string }[]
-  >([])
+  const [following, setFollowing] = useState<FollowRelation[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [messages, setMessages] = useState<Message[]>([])
 
@@ -261,7 +262,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateWorkout = useCallback(
     async (id: string, data: Partial<Workout>) => {
-      // Simplified update for now
       const { error } = await supabase
         .from('workouts')
         .update({
@@ -334,7 +334,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (error) toast.error('Erro ao salvar progresso')
       else {
-        // Optimistic update
         setProgressLogs((prev) => [
           {
             ...logData,
@@ -371,7 +370,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     async (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
       try {
         await notificationService.create(notification)
-        // Realtime subscription would handle this, but for now:
         if (user && notification.userId === user.id) {
           setNotifications((prev) => [
             {
@@ -394,13 +392,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     async (followerId: string, followingId: string) => {
       try {
         await socialService.follow(followerId, followingId)
-        setFollowing((prev) => [...prev, { followerId, followingId }])
-        toast.success('Você começou a seguir este usuário!')
+        setFollowing((prev) => [
+          ...prev,
+          { followerId, followingId, status: 'pending' },
+        ])
+        toast.success('Solicitação de seguimento enviada!')
+
+        // Notify target user
+        addNotification({
+          userId: followingId,
+          message: 'Você tem uma nova solicitação de seguidor.',
+          type: 'new_follower',
+          link: '/social',
+        })
       } catch (error) {
         toast.error('Erro ao seguir usuário')
       }
     },
-    [],
+    [addNotification],
   )
 
   const unfollowUser = useCallback(
@@ -421,10 +430,62 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   )
 
+  const acceptFollowRequest = useCallback(
+    async (followerId: string, followingId: string) => {
+      try {
+        await socialService.acceptFollow(followerId, followingId)
+        setFollowing((prev) =>
+          prev.map((f) =>
+            f.followerId === followerId && f.followingId === followingId
+              ? { ...f, status: 'accepted' }
+              : f,
+          ),
+        )
+        toast.success('Solicitação aceita!')
+      } catch (error) {
+        toast.error('Erro ao aceitar solicitação')
+      }
+    },
+    [],
+  )
+
+  const rejectFollowRequest = useCallback(
+    async (followerId: string, followingId: string) => {
+      try {
+        await socialService.rejectFollow(followerId, followingId)
+        setFollowing((prev) =>
+          prev.filter(
+            (f) =>
+              !(f.followerId === followerId && f.followingId === followingId),
+          ),
+        )
+        toast.info('Solicitação recusada.')
+      } catch (error) {
+        toast.error('Erro ao recusar solicitação')
+      }
+    },
+    [],
+  )
+
   const isFollowing = useCallback(
     (followerId: string, followingId: string) => {
       return following.some(
-        (f) => f.followerId === followerId && f.followingId === followingId,
+        (f) =>
+          f.followerId === followerId &&
+          f.followingId === followingId &&
+          f.status === 'accepted',
+      )
+    },
+    [following],
+  )
+
+  const isPending = useCallback(
+    (followerId: string, followingId: string) => {
+      return following.some(
+        (f) =>
+          f.followerId === followerId &&
+          f.followingId === followingId &&
+          f.status === 'pending',
       )
     },
     [following],
@@ -452,9 +513,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
           },
         ])
         toast.success('Treino atribuído com sucesso!')
+        addNotification({
+          userId,
+          message: 'Você recebeu um novo treino do seu treinador.',
+          type: 'workout_assignment',
+          link: '/dashboard',
+        })
       }
     },
-    [],
+    [addNotification],
   )
 
   const sendMessage = useCallback(
@@ -509,7 +576,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       addNotification,
       followUser,
       unfollowUser,
+      acceptFollowRequest,
+      rejectFollowRequest,
       isFollowing,
+      isPending,
       assignWorkout,
       sendMessage,
       searchUsers,
@@ -535,7 +605,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
       addNotification,
       followUser,
       unfollowUser,
+      acceptFollowRequest,
+      rejectFollowRequest,
       isFollowing,
+      isPending,
       assignWorkout,
       sendMessage,
       searchUsers,

@@ -15,8 +15,21 @@ export function Notifications() {
   const { notifications, markNotificationAsRead } = useData()
   const { user } = useAuth()
 
-  // Filter notifications for the current user
-  const userNotifications = notifications.filter((n) => n.userId === user?.id)
+  // Filter notifications for the current user and respect preferences
+  const userNotifications = notifications.filter((n) => {
+    if (n.userId !== user?.id) return false
+
+    const prefs = user?.notificationPreferences
+    if (!prefs) return true
+
+    if (n.type === 'new_follower' && !prefs.newFollower) return false
+    // Assuming 'info' maps to system updates or generic messages
+    if (n.type === 'info' && !prefs.systemUpdates) return false
+    if (n.type === 'workout_assignment' && !prefs.workoutAssignment)
+      return false
+    // Add other mappings as needed
+    return true
+  })
 
   const unreadCount = userNotifications.filter((n) => !n.read).length
 

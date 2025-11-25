@@ -42,6 +42,7 @@ import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { ShareProfileDialog } from '@/components/ShareProfileDialog'
 import { useDebounce } from '@/hooks/use-debounce'
+import { NotificationSettings } from '@/components/NotificationSettings'
 
 const profileSchema = z.object({
   username: z
@@ -258,10 +259,10 @@ export default function Profile() {
   }
 
   const followingCount = following.filter(
-    (f) => f.followerId === user.id,
+    (f) => f.followerId === user.id && f.status === 'accepted',
   ).length
   const followersCount = following.filter(
-    (f) => f.followingId === user.id,
+    (f) => f.followingId === user.id && f.status === 'accepted',
   ).length
 
   return (
@@ -337,12 +338,15 @@ export default function Profile() {
       )}
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8 bg-secondary/30 p-1 rounded-xl h-auto">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-5 mb-8 bg-secondary/30 p-1 rounded-xl h-auto">
           <TabsTrigger value="profile" className="rounded-lg">
             Perfil
           </TabsTrigger>
           <TabsTrigger value="social" className="rounded-lg">
             Social
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="rounded-lg">
+            Notificações
           </TabsTrigger>
           <TabsTrigger value="account" className="rounded-lg">
             Conta
@@ -556,6 +560,10 @@ export default function Profile() {
               </Form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <NotificationSettings />
         </TabsContent>
 
         <TabsContent value="account">

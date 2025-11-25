@@ -12,13 +12,24 @@ import {
   UserCheck,
   ExternalLink,
   Loader2,
+  X,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useDebounce } from '@/hooks/use-debounce'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FollowRequests } from '@/components/social/FollowRequests'
+import { FollowList } from '@/components/social/FollowList'
 
 export default function Social() {
-  const { publicUsers, followUser, unfollowUser, isFollowing, searchUsers } =
-    useData()
+  const {
+    publicUsers,
+    followUser,
+    unfollowUser,
+    isFollowing,
+    isPending,
+    searchUsers,
+    following,
+  } = useData()
   const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState<PublicUser[]>([])
@@ -48,7 +59,10 @@ export default function Social() {
 
   const handleFollowToggle = (targetUserId: string) => {
     if (!user) return
-    if (isFollowing(user.id, targetUserId)) {
+    if (
+      isFollowing(user.id, targetUserId) ||
+      isPending(user.id, targetUserId)
+    ) {
       unfollowUser(user.id, targetUserId)
     } else {
       followUser(user.id, targetUserId)
@@ -56,6 +70,11 @@ export default function Social() {
   }
 
   const displayUsers = searchResults.filter((u) => u.id !== user?.id)
+  const pendingCount = user
+    ? following.filter(
+        (f) => f.followingId === user.id && f.status === 'pending',
+      ).length
+    : 0
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
@@ -68,96 +87,154 @@ export default function Social() {
         </p>
       </div>
 
-      <div className="max-w-md mx-auto mb-8 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-        <Input
-          placeholder="Buscar por nome, username ou email..."
-          className="pl-10 rounded-full"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        {isSearching && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-primary h-4 w-4 animate-spin" />
-        )}
-      </div>
+      <Tabs defaultValue="discover" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8 bg-secondary/30 p-1 rounded-xl h-auto">
+          <TabsTrigger value="discover" className="rounded-lg">
+            Descobrir
+          </TabsTrigger>
+          {user && (
+            <>
+              <TabsTrigger value="following" className="rounded-lg">
+                Seguindo
+              </TabsTrigger>
+              <TabsTrigger value="followers" className="rounded-lg">
+                Seguidores
+              </TabsTrigger>
+              <TabsTrigger value="requests" className="rounded-lg relative">
+                Solicitações
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center">
+                    {pendingCount}
+                  </span>
+                )}
+              </TabsTrigger>
+            </>
+          )}
+        </TabsList>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {displayUsers.map((publicUser) => {
-          const isFollowed = user ? isFollowing(user.id, publicUser.id) : false
-          return (
-            <Card
-              key={publicUser.id}
-              className="border-none shadow-md hover:shadow-lg transition-shadow"
-            >
-              <CardContent className="p-6 flex items-center gap-4">
-                <Link to={`/profile/${publicUser.username}`}>
-                  <Avatar className="h-16 w-16 border-2 border-primary/10 hover:border-primary/30 transition-colors">
-                    <AvatarImage src={publicUser.avatar} />
-                    <AvatarFallback>{publicUser.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                </Link>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Link
-                      to={`/profile/${publicUser.username}`}
-                      className="font-bold truncate hover:text-primary transition-colors"
-                    >
-                      {publicUser.name}
+        <TabsContent value="discover">
+          <div className="max-w-md mx-auto mb-8 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Buscar por nome, username ou email..."
+              className="pl-10 rounded-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {isSearching && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-primary h-4 w-4 animate-spin" />
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {displayUsers.map((publicUser) => {
+              const isFollowed = user
+                ? isFollowing(user.id, publicUser.id)
+                : false
+              const isReqPending = user
+                ? isPending(user.id, publicUser.id)
+                : false
+
+              return (
+                <Card
+                  key={publicUser.id}
+                  className="border-none shadow-md hover:shadow-lg transition-shadow"
+                >
+                  <CardContent className="p-6 flex items-center gap-4">
+                    <Link to={`/profile/${publicUser.username}`}>
+                      <Avatar className="h-16 w-16 border-2 border-primary/10 hover:border-primary/30 transition-colors">
+                        <AvatarImage src={publicUser.avatar} />
+                        <AvatarFallback>
+                          {publicUser.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
                     </Link>
-                    <Badge
-                      variant={
-                        publicUser.role === 'trainer' ? 'default' : 'secondary'
-                      }
-                      className="text-[10px] px-1.5 py-0"
-                    >
-                      {publicUser.role === 'trainer' ? 'Trainer' : 'User'}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground truncate mb-3">
-                    {publicUser.bio || 'Sem biografia.'}
-                  </p>
-                  <div className="flex gap-2">
-                    {user && (
-                      <Button
-                        size="sm"
-                        variant={isFollowed ? 'outline' : 'default'}
-                        className="flex-1 h-8"
-                        onClick={() => handleFollowToggle(publicUser.id)}
-                      >
-                        {isFollowed ? (
-                          <>
-                            <UserCheck className="mr-2 h-3 w-3" /> Seguindo
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus className="mr-2 h-3 w-3" /> Seguir
-                          </>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Link
+                          to={`/profile/${publicUser.username}`}
+                          className="font-bold truncate hover:text-primary transition-colors"
+                        >
+                          {publicUser.name}
+                        </Link>
+                        <Badge
+                          variant={
+                            publicUser.role === 'trainer'
+                              ? 'default'
+                              : 'secondary'
+                          }
+                          className="text-[10px] px-1.5 py-0"
+                        >
+                          {publicUser.role === 'trainer' ? 'Trainer' : 'User'}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate mb-3">
+                        {publicUser.bio || 'Sem biografia.'}
+                      </p>
+                      <div className="flex gap-2">
+                        {user && (
+                          <Button
+                            size="sm"
+                            variant={
+                              isFollowed || isReqPending ? 'outline' : 'default'
+                            }
+                            className="flex-1 h-8"
+                            onClick={() => handleFollowToggle(publicUser.id)}
+                          >
+                            {isFollowed ? (
+                              <>
+                                <UserCheck className="mr-2 h-3 w-3" /> Seguindo
+                              </>
+                            ) : isReqPending ? (
+                              <>
+                                <X className="mr-2 h-3 w-3" /> Pendente
+                              </>
+                            ) : (
+                              <>
+                                <UserPlus className="mr-2 h-3 w-3" /> Seguir
+                              </>
+                            )}
+                          </Button>
                         )}
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 px-2"
-                      asChild
-                    >
-                      <Link to={`/profile/${publicUser.username}`}>
-                        <ExternalLink className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-2"
+                          asChild
+                        >
+                          <Link to={`/profile/${publicUser.username}`}>
+                            <ExternalLink className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
 
-      {displayUsers.length === 0 && !isSearching && (
-        <div className="text-center py-12 text-muted-foreground">
-          Nenhum usuário encontrado.
-        </div>
-      )}
+          {displayUsers.length === 0 && !isSearching && (
+            <div className="text-center py-12 text-muted-foreground">
+              Nenhum usuário encontrado.
+            </div>
+          )}
+        </TabsContent>
+
+        {user && (
+          <>
+            <TabsContent value="following">
+              <FollowList type="following" />
+            </TabsContent>
+            <TabsContent value="followers">
+              <FollowList type="followers" />
+            </TabsContent>
+            <TabsContent value="requests">
+              <FollowRequests />
+            </TabsContent>
+          </>
+        )}
+      </Tabs>
     </div>
   )
 }

@@ -23,6 +23,13 @@ export interface SocialLinks {
   website?: string
 }
 
+export interface NotificationPreferences {
+  newFollower: boolean
+  newMessage: boolean
+  workoutAssignment: boolean
+  systemUpdates: boolean
+}
+
 export interface User {
   id: string
   username: string
@@ -34,6 +41,7 @@ export interface User {
   bio?: string
   socialLinks?: SocialLinks
   preferences?: string[]
+  notificationPreferences?: NotificationPreferences
   subscriptionStatus?: SubscriptionStatus
   plan?: SubscriptionPlan
   status?: UserStatus
@@ -69,6 +77,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
 
+  const defaultNotificationPreferences: NotificationPreferences = {
+    newFollower: true,
+    newMessage: true,
+    workoutAssignment: true,
+    systemUpdates: true,
+  }
+
   const mapProfileToUser = (profile: any): User => ({
     id: profile.id,
     username: profile.username || '',
@@ -80,6 +95,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     bio: profile.bio,
     socialLinks: profile.metadata?.socialLinks,
     preferences: profile.metadata?.preferences,
+    notificationPreferences:
+      profile.metadata?.notificationPreferences ||
+      defaultNotificationPreferences,
     subscriptionStatus: profile.metadata?.subscriptionStatus || 'inactive',
     plan: profile.metadata?.plan || 'free',
     status: profile.metadata?.status || 'active',
@@ -222,6 +240,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const metadataUpdates: any = {}
       if (data.socialLinks) metadataUpdates.socialLinks = data.socialLinks
       if (data.preferences) metadataUpdates.preferences = data.preferences
+      if (data.notificationPreferences)
+        metadataUpdates.notificationPreferences = data.notificationPreferences
       if (data.subscriptionStatus)
         metadataUpdates.subscriptionStatus = data.subscriptionStatus
       if (data.plan) metadataUpdates.plan = data.plan
@@ -233,6 +253,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         updates.metadata = {
           socialLinks: data.socialLinks || user.socialLinks,
           preferences: data.preferences || user.preferences,
+          notificationPreferences:
+            data.notificationPreferences || user.notificationPreferences,
           subscriptionStatus:
             data.subscriptionStatus || user.subscriptionStatus,
           plan: data.plan || user.plan,
@@ -261,7 +283,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setAllUsers((prev) =>
           prev.map((u) => (u.id === user.id ? updatedUser : u)),
         )
-        if (!data.points) toast.success('Perfil atualizado!')
+        if (!data.points && !data.notificationPreferences)
+          toast.success('Perfil atualizado!')
         return { error: null }
       }
     },
