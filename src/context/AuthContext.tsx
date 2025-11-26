@@ -204,6 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               role: data.role,
               avatar_url: data.avatar,
               bio: data.bio,
+              status: 'active', // Explicitly send status
             },
           },
         })
@@ -230,8 +231,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           } else if (
             error.message?.includes('Database error saving new user')
           ) {
+            // This specific error should be prevented by the new migration, but we keep the handler just in case
             message =
-              'Erro ao criar perfil. Por favor, tente novamente ou contate o suporte.'
+              'Erro ao criar perfil. Por favor, tente novamente. Se o erro persistir, contate o suporte.'
           }
 
           return { data: authData, error: { message } }
