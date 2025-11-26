@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/client'
-import { Workout, Exercise, Review } from '@/context/DataContext'
+import { Workout, Review } from '@/context/DataContext'
 
 export const workoutService = {
   async fetchWorkouts() {

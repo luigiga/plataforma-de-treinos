@@ -17,7 +17,12 @@ export const notificationService = {
       read: !!n.read_at,
       createdAt: n.created_at,
       link: n.link,
-      type: n.type as 'info' | 'success' | 'warning',
+      type: n.type as
+        | 'info'
+        | 'success'
+        | 'warning'
+        | 'new_follower'
+        | 'workout_assignment',
     })) as Notification[]
   },
 

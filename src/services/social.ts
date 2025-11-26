@@ -36,7 +36,7 @@ export const socialService = {
     return data.map((f: any) => ({
       followerId: f.follower_id,
       followingId: f.following_id,
-      status: f.status || 'accepted', // Fallback for old data
+      status: f.status || 'accepted',
     })) as FollowRelation[]
   },
 
