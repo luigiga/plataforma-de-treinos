@@ -92,7 +92,6 @@ const mapProfileToUser = (profile: any): User => ({
     profile.metadata?.notificationPreferences || defaultNotificationPreferences,
   subscriptionStatus: profile.metadata?.subscriptionStatus || 'inactive',
   plan: profile.metadata?.plan || 'free',
-  // Prefer status column, fallback to metadata for backward compatibility
   status: profile.status || profile.metadata?.status || 'active',
   points: profile.metadata?.points || 0,
   badges: profile.metadata?.badges || [],
@@ -106,7 +105,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
 
-  // Environment Configuration Validation
   useEffect(() => {
     if (
       !import.meta.env.VITE_SUPABASE_URL ||
@@ -169,14 +167,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         })
         if (error) {
           logger.error('Login failed', error)
-          toast.error(error.message)
-          return { error }
+          let message = error.message
+          if (error.message === 'Invalid login credentials') {
+            message = 'E-mail ou senha inválidos. Por favor, tente novamente.'
+          }
+          return { error: { message } }
         }
         toast.success('Login realizado com sucesso!')
         return { error: null }
-      } catch (err) {
+      } catch (err: any) {
         logger.error('Unexpected error during login', err)
-        return { error: err }
+        return {
+          error: { message: 'Ocorreu um erro inesperado. Tente novamente.' },
+        }
       }
     },
     [],
@@ -206,8 +209,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (error) {
           logger.error('Registration failed', error)
-          toast.error(error.message)
-          return { data: authData, error }
+          let message =
+            'Ocorreu um erro inesperado durante o registro. Por favor, tente novamente.'
+
+          if (
+            error.message?.includes('User already registered') ||
+            error.message?.includes('already registered')
+          ) {
+            message = 'Email already registered'
+          }
+
+          return { data: authData, error: { message } }
         } else {
           logger.info('User registered successfully', {
             userId: authData.user?.id,
@@ -216,7 +228,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           if (authData.session) {
             toast.success('Conta criada com sucesso!')
 
-            // Trigger welcome email asynchronously
             supabase.functions
               .invoke('send-welcome-email', {
                 body: {
@@ -242,7 +253,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       } catch (err) {
         logger.error('Unexpected error during registration', err)
-        return { error: err }
+        return {
+          error: {
+            message:
+              'Ocorreu um erro inesperado durante o registro. Por favor, tente novamente.',
+          },
+        }
       }
     },
     [],
@@ -269,7 +285,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (data.avatar !== undefined) updates.avatar_url = data.avatar
       if (data.status !== undefined) updates.status = data.status
 
-      // Metadata updates
       const metadataUpdates: any = {}
       if (data.socialLinks) metadataUpdates.socialLinks = data.socialLinks
       if (data.preferences) metadataUpdates.preferences = data.preferences
@@ -278,7 +293,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (data.subscriptionStatus)
         metadataUpdates.subscriptionStatus = data.subscriptionStatus
       if (data.plan) metadataUpdates.plan = data.plan
-      // We don't update status in metadata anymore, but we keep reading it for backward compatibility
       if (data.points !== undefined) metadataUpdates.points = data.points
       if (data.badges) metadataUpdates.badges = data.badges
 
@@ -291,7 +305,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           subscriptionStatus:
             data.subscriptionStatus || user.subscriptionStatus,
           plan: data.plan || user.plan,
-          // Keep status in metadata synced just in case, or remove it? Let's keep it synced for now.
           status: data.status || user.status,
           points: data.points !== undefined ? data.points : user.points,
           badges: data.badges || user.badges,
@@ -302,7 +315,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         await profileService.updateProfile(user.id, updates)
 
         const updatedUser = { ...user, ...data }
-        // If full_name or username changed, update name
         if (data.full_name || data.username) {
           updatedUser.name = data.full_name || data.username || updatedUser.name
         }
@@ -341,7 +353,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         await profileService.updateProfile(id, {
           status: newStatus,
-          // Sync metadata as well
           metadata: { ...targetUser, status: newStatus },
         })
 

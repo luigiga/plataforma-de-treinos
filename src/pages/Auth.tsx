@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/form'
 import { useDebounce } from '@/hooks/use-debounce'
 import { Loader2, Check, X } from 'lucide-react'
+import { toast } from 'sonner'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -58,7 +59,6 @@ export default function Auth() {
   const location = useLocation()
   const { login, register, user, checkUsernameAvailability } = useAuth()
 
-  // Determine default tab based on path or query param
   let defaultTab = searchParams.get('tab')
   if (!defaultTab) {
     if (location.pathname === '/register' || location.pathname === '/signup') {
@@ -96,7 +96,6 @@ export default function Auth() {
     },
   })
 
-  // Username availability check logic
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
     null,
   )
@@ -111,7 +110,6 @@ export default function Auth() {
         return
       }
 
-      // Check regex first to avoid unnecessary API calls
       const regex = /^[a-zA-Z0-9_]+$/
       if (!regex.test(debouncedUsername)) {
         setUsernameAvailable(null)
@@ -126,7 +124,7 @@ export default function Auth() {
       if (!isAvailable) {
         registerForm.setError('username', {
           type: 'manual',
-          message: 'Nome de usuário indisponível.',
+          message: 'Username already taken',
         })
       } else {
         registerForm.clearErrors('username')
@@ -140,16 +138,16 @@ export default function Auth() {
     const { error } = await login(data.email, data.password)
     if (error) {
       loginForm.setError('root', {
-        message: 'Falha no login. Verifique suas credenciais.',
+        message: error.message,
       })
+      toast.error(error.message)
     }
   }
 
   async function onRegister(data: z.infer<typeof registerSchema>) {
-    // Final check before submission
     if (usernameAvailable === false) {
       registerForm.setError('username', {
-        message: 'Este nome de usuário já está em uso.',
+        message: 'Username already taken',
       })
       return
     }
@@ -163,10 +161,10 @@ export default function Auth() {
 
     if (error) {
       registerForm.setError('root', {
-        message: error.message || 'Erro ao criar conta. Tente novamente.',
+        message: error.message,
       })
+      toast.error(error.message)
     }
-    // If successful, AuthContext handles toast and redirection via useEffect if session is established
   }
 
   const handleTabChange = (value: string) => {
@@ -237,7 +235,7 @@ export default function Auth() {
                     )}
                   />
                   {loginForm.formState.errors.root && (
-                    <p className="text-sm text-destructive">
+                    <p className="text-sm text-destructive font-medium text-center bg-destructive/10 p-2 rounded-md">
                       {loginForm.formState.errors.root.message}
                     </p>
                   )}
@@ -279,7 +277,6 @@ export default function Auth() {
                               {...field}
                               onChange={(e) => {
                                 field.onChange(e)
-                                // Reset availability state on change to trigger debounce effect
                                 if (usernameAvailable !== null)
                                   setUsernameAvailable(null)
                               }}
@@ -387,7 +384,7 @@ export default function Auth() {
                     )}
                   />
                   {registerForm.formState.errors.root && (
-                    <p className="text-sm text-destructive">
+                    <p className="text-sm text-destructive font-medium text-center bg-destructive/10 p-2 rounded-md">
                       {registerForm.formState.errors.root.message}
                     </p>
                   )}
