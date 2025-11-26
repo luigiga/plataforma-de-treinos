@@ -125,7 +125,7 @@ export default function Auth() {
         registerForm.setError('username', {
           type: 'manual',
           message:
-            'Este nome de usuário já está em uso. Por favor, escolha outro.',
+            'Este nome de usuário já está em uso. Por favor, escolha um nome de usuário diferente.',
         })
       } else {
         registerForm.clearErrors('username')
@@ -149,7 +149,7 @@ export default function Auth() {
     if (usernameAvailable === false) {
       registerForm.setError('username', {
         message:
-          'Este nome de usuário já está em uso. Por favor, escolha outro.',
+          'Este nome de usuário já está em uso. Por favor, escolha um nome de usuário diferente.',
       })
       return
     }

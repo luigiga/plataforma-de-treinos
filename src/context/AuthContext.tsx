@@ -170,7 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           let message = error.message
           // Map specific error for invalid credentials
           if (error.message === 'Invalid login credentials') {
-            message = 'E-mail ou senha inválidos. Por favor, tente novamente.'
+            message = 'Email ou senha inválidos. Por favor, tente novamente.'
           }
           return { error: { message } }
         }
@@ -212,7 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (error) {
           logger.error('Registration failed', error)
           let message =
-            'Falha no cadastro. Por favor, verifique seus dados e tente novamente.'
+            'Falha no registro. Por favor, revise seus detalhes e tente novamente.'
 
           // Map specific errors
           if (
@@ -221,17 +221,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             error.status === 422
           ) {
             message =
-              'Este e-mail já está cadastrado. Por favor, use um e-mail diferente ou faça login.'
+              'Este e-mail já está registrado. Por favor, use um e-mail diferente ou faça login.'
           } else if (
             error.message?.includes('duplicate key') ||
             error.message?.includes('username')
           ) {
             message =
-              'Este nome de usuário já está em uso. Por favor, escolha outro.'
+              'Este nome de usuário já está em uso. Por favor, escolha um nome de usuário diferente.'
           } else if (
             error.message?.includes('Database error saving new user')
           ) {
-            // This specific error should be prevented by the new migration, but we keep the handler just in case
             message =
               'Erro ao criar perfil. Por favor, tente novamente. Se o erro persistir, contate o suporte.'
           }
@@ -274,7 +273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         return {
           error: {
             message:
-              'Falha no cadastro. Por favor, verifique seus dados e tente novamente.',
+              'Falha no registro. Por favor, revise seus detalhes e tente novamente.',
           },
         }
       }
