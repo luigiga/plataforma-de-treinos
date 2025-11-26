@@ -124,7 +124,8 @@ export default function Auth() {
       if (!isAvailable) {
         registerForm.setError('username', {
           type: 'manual',
-          message: 'Username already taken',
+          message:
+            'Este nome de usuário já está em uso. Por favor, escolha outro.',
         })
       } else {
         registerForm.clearErrors('username')
@@ -147,7 +148,8 @@ export default function Auth() {
   async function onRegister(data: z.infer<typeof registerSchema>) {
     if (usernameAvailable === false) {
       registerForm.setError('username', {
-        message: 'Username already taken',
+        message:
+          'Este nome de usuário já está em uso. Por favor, escolha outro.',
       })
       return
     }

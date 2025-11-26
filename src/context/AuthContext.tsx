@@ -168,6 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (error) {
           logger.error('Login failed', error)
           let message = error.message
+          // Map specific error for invalid credentials
           if (error.message === 'Invalid login credentials') {
             message = 'E-mail ou senha inválidos. Por favor, tente novamente.'
           }
@@ -210,13 +211,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (error) {
           logger.error('Registration failed', error)
           let message =
-            'Ocorreu um erro inesperado durante o registro. Por favor, tente novamente.'
+            'Falha no cadastro. Por favor, verifique seus dados e tente novamente.'
 
+          // Map specific errors
           if (
             error.message?.includes('User already registered') ||
-            error.message?.includes('already registered')
+            error.message?.includes('already registered') ||
+            error.status === 422
           ) {
-            message = 'Email already registered'
+            message =
+              'Este e-mail já está cadastrado. Por favor, use um e-mail diferente ou faça login.'
+          } else if (
+            error.message?.includes('duplicate key') ||
+            error.message?.includes('username')
+          ) {
+            message =
+              'Este nome de usuário já está em uso. Por favor, escolha outro.'
           }
 
           return { data: authData, error: { message } }
@@ -228,6 +238,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           if (authData.session) {
             toast.success('Conta criada com sucesso!')
 
+            // Trigger welcome email
             supabase.functions
               .invoke('send-welcome-email', {
                 body: {
@@ -256,7 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         return {
           error: {
             message:
-              'Ocorreu um erro inesperado durante o registro. Por favor, tente novamente.',
+              'Falha no cadastro. Por favor, verifique seus dados e tente novamente.',
           },
         }
       }
