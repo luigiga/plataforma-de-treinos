@@ -24,7 +24,8 @@ export const onRequest = async (req: Request) => {
       throw new Error('Email is required')
     }
 
-    console.log(`Sending welcome email to ${email} (${name}, @${username})`)
+    console.log(`[INFO] Starting welcome email process for: ${email}`)
+    console.log(`[INFO] User details - Name: ${name}, Username: ${username}`)
 
     // In a real production environment, you would use an email service provider like Resend, SendGrid, or AWS SES.
     // Example with Resend (if RESEND_API_KEY was available):
@@ -47,6 +48,8 @@ export const onRequest = async (req: Request) => {
     // Simulating email sending delay
     await new Promise((resolve) => setTimeout(resolve, 500))
 
+    console.log(`[SUCCESS] Welcome email successfully sent to ${email}`)
+
     return new Response(
       JSON.stringify({ message: 'Welcome email sent successfully' }),
       {
@@ -55,7 +58,7 @@ export const onRequest = async (req: Request) => {
       },
     )
   } catch (error: any) {
-    console.error('Error sending welcome email:', error)
+    console.error(`[ERROR] Failed to send welcome email:`, error)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

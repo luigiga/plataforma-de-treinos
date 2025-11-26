@@ -246,9 +246,14 @@ export default function Auth() {
                     className="w-full rounded-xl h-12 text-lg"
                     disabled={loginForm.formState.isSubmitting}
                   >
-                    {loginForm.formState.isSubmitting
-                      ? 'Entrando...'
-                      : 'Entrar'}
+                    {loginForm.formState.isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Entrando...
+                      </>
+                    ) : (
+                      'Entrar'
+                    )}
                   </Button>
                 </form>
               </Form>
@@ -394,9 +399,14 @@ export default function Auth() {
                       usernameAvailable === false
                     }
                   >
-                    {registerForm.formState.isSubmitting
-                      ? 'Criando Conta...'
-                      : 'Criar Conta'}
+                    {registerForm.formState.isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Criando Conta...
+                      </>
+                    ) : (
+                      'Criar Conta'
+                    )}
                   </Button>
                 </form>
               </Form>

@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase/client'
 import { Session, AuthResponse } from '@supabase/supabase-js'
+import { profileService } from '@/services/profile'
 
 export type UserRole = 'subscriber' | 'trainer' | 'admin'
 export type SubscriptionStatus = 'active' | 'inactive' | 'canceled'
@@ -91,7 +92,8 @@ const mapProfileToUser = (profile: any): User => ({
     profile.metadata?.notificationPreferences || defaultNotificationPreferences,
   subscriptionStatus: profile.metadata?.subscriptionStatus || 'inactive',
   plan: profile.metadata?.plan || 'free',
-  status: profile.metadata?.status || 'active',
+  // Prefer status column, fallback to metadata for backward compatibility
+  status: profile.status || profile.metadata?.status || 'active',
   points: profile.metadata?.points || 0,
   badges: profile.metadata?.badges || [],
 })
@@ -104,27 +106,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-
-    if (error) {
-      logger.error('Error fetching profile', error)
-      return null
+  // Environment Configuration Validation
+  useEffect(() => {
+    if (
+      !import.meta.env.VITE_SUPABASE_URL ||
+      !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+    ) {
+      const errorMsg =
+        'Missing Supabase environment variables. Please check your .env file.'
+      logger.error(errorMsg)
+      toast.error('Configuration Error: ' + errorMsg)
     }
-    return mapProfileToUser(data)
+  }, [])
+
+  const fetchProfile = useCallback(async (userId: string) => {
+    const profile = await profileService.getProfile(userId)
+    if (!profile) return null
+    return mapProfileToUser(profile)
   }, [])
 
   const fetchAllUsers = useCallback(async () => {
-    const { data, error } = await supabase.from('profiles').select('*')
-    if (error) {
-      logger.error('Error fetching all users', error)
-      return
-    }
-    setAllUsers(data.map(mapProfileToUser))
+    const profiles = await profileService.getAllProfiles()
+    setAllUsers(profiles.map(mapProfileToUser))
   }, [])
 
   useEffect(() => {
@@ -159,70 +162,100 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = useCallback(
     async (email: string, password: string): Promise<{ error: any }> => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-      if (error) {
-        toast.error(error.message)
-        return { error }
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (error) {
+          logger.error('Login failed', error)
+          toast.error(error.message)
+          return { error }
+        }
+        toast.success('Login realizado com sucesso!')
+        return { error: null }
+      } catch (err) {
+        logger.error('Unexpected error during login', err)
+        return { error: err }
       }
-      toast.success('Login realizado com sucesso!')
-      return { error: null }
     },
     [],
   )
 
   const register = useCallback(
     async (email: string, password: string, data: Partial<User>) => {
-      const { data: authData, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username: data.username,
-            full_name: data.name,
-            role: data.role,
-            avatar_url: data.avatar,
-            bio: data.bio,
+      try {
+        logger.info('Starting user registration', {
+          email,
+          username: data.username,
+        })
+
+        const { data: authData, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              username: data.username,
+              full_name: data.name,
+              role: data.role,
+              avatar_url: data.avatar,
+              bio: data.bio,
+            },
           },
-        },
-      })
+        })
 
-      if (error) {
-        toast.error(error.message)
-        return { data: authData, error }
-      } else {
-        if (authData.session) {
-          toast.success('Conta criada com sucesso!')
-
-          // Trigger welcome email asynchronously
-          supabase.functions
-            .invoke('send-welcome-email', {
-              body: {
-                email: email,
-                name: data.name || data.username || 'User',
-                username: data.username || 'user',
-              },
-            })
-            .then(({ error }) => {
-              if (error) {
-                console.error('Failed to send welcome email:', error)
-              }
-            })
+        if (error) {
+          logger.error('Registration failed', error)
+          toast.error(error.message)
+          return { data: authData, error }
         } else {
-          toast.success('Conta criada! Verifique seu email para confirmar.')
+          logger.info('User registered successfully', {
+            userId: authData.user?.id,
+          })
+
+          if (authData.session) {
+            toast.success('Conta criada com sucesso!')
+
+            // Trigger welcome email asynchronously
+            supabase.functions
+              .invoke('send-welcome-email', {
+                body: {
+                  email: email,
+                  name: data.name || data.username || 'User',
+                  username: data.username || 'user',
+                },
+              })
+              .then(({ error }) => {
+                if (error) {
+                  logger.error('Failed to send welcome email', error)
+                } else {
+                  logger.info('Welcome email trigger sent successfully')
+                }
+              })
+          } else {
+            toast.success('Conta criada! Verifique seu email para confirmar.')
+            logger.info(
+              'Registration successful, waiting for email verification',
+            )
+          }
+          return { data: authData, error: null }
         }
-        return { data: authData, error: null }
+      } catch (err) {
+        logger.error('Unexpected error during registration', err)
+        return { error: err }
       }
     },
     [],
   )
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-    toast.info('Você saiu da conta.')
+    try {
+      await supabase.auth.signOut()
+      setUser(null)
+      toast.info('Você saiu da conta.')
+    } catch (err) {
+      logger.error('Error during logout', err)
+    }
   }, [])
 
   const updateUser = useCallback(
@@ -234,6 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (data.username !== undefined) updates.username = data.username
       if (data.bio !== undefined) updates.bio = data.bio
       if (data.avatar !== undefined) updates.avatar_url = data.avatar
+      if (data.status !== undefined) updates.status = data.status
 
       // Metadata updates
       const metadataUpdates: any = {}
@@ -244,7 +278,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (data.subscriptionStatus)
         metadataUpdates.subscriptionStatus = data.subscriptionStatus
       if (data.plan) metadataUpdates.plan = data.plan
-      if (data.status) metadataUpdates.status = data.status
+      // We don't update status in metadata anymore, but we keep reading it for backward compatibility
       if (data.points !== undefined) metadataUpdates.points = data.points
       if (data.badges) metadataUpdates.badges = data.badges
 
@@ -257,21 +291,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           subscriptionStatus:
             data.subscriptionStatus || user.subscriptionStatus,
           plan: data.plan || user.plan,
+          // Keep status in metadata synced just in case, or remove it? Let's keep it synced for now.
           status: data.status || user.status,
           points: data.points !== undefined ? data.points : user.points,
           badges: data.badges || user.badges,
         }
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id)
+      try {
+        await profileService.updateProfile(user.id, updates)
 
-      if (error) {
-        toast.error('Erro ao atualizar perfil: ' + error.message)
-        return { error }
-      } else {
         const updatedUser = { ...user, ...data }
         // If full_name or username changed, update name
         if (data.full_name || data.username) {
@@ -285,18 +314,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (!data.points && !data.notificationPreferences)
           toast.success('Perfil atualizado!')
         return { error: null }
+      } catch (error: any) {
+        toast.error('Erro ao atualizar perfil: ' + error.message)
+        return { error }
       }
     },
     [user],
   )
 
   const deleteUser = useCallback(async (id: string) => {
-    const { error } = await supabase.from('profiles').delete().eq('id', id)
-    if (error) {
-      toast.error('Erro ao excluir usuário')
-    } else {
+    try {
+      await profileService.deleteProfile(id)
       setAllUsers((prev) => prev.filter((u) => u.id !== id))
       toast.success('Usuário excluído com sucesso.')
+    } catch (error) {
+      toast.error('Erro ao excluir usuário')
     }
   }, [])
 
@@ -306,43 +338,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!targetUser) return
 
       const newStatus = targetUser.status === 'active' ? 'inactive' : 'active'
-      const { error } = await supabase
-        .from('profiles')
-        .update({
+      try {
+        await profileService.updateProfile(id, {
+          status: newStatus,
+          // Sync metadata as well
           metadata: { ...targetUser, status: newStatus },
         })
-        .eq('id', id)
 
-      if (error) {
-        toast.error('Erro ao atualizar status')
-      } else {
         setAllUsers((prev) =>
           prev.map((u) => (u.id === id ? { ...u, status: newStatus } : u)),
         )
         toast.success(
           `Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'}.`,
         )
+      } catch (error) {
+        toast.error('Erro ao atualizar status')
       }
     },
     [allUsers],
   )
 
   const checkUsernameAvailability = useCallback(async (username: string) => {
-    try {
-      const { count, error } = await supabase
-        .from('profiles')
-        .select('username', { count: 'exact', head: true })
-        .eq('username', username)
-
-      if (error) {
-        console.error('Error checking username:', error)
-        return false
-      }
-      return count === 0
-    } catch (error) {
-      console.error('Error checking username:', error)
-      return false
-    }
+    return await profileService.checkUsernameAvailability(username)
   }, [])
 
   const value = useMemo(
