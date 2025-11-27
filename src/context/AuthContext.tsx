@@ -229,7 +229,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             message =
               'Este nome de usuário já está em uso. Por favor, escolha um nome de usuário diferente.'
           } else if (
-            error.message?.includes('Database error saving new user')
+            error.message?.includes('Database error saving new user') ||
+            error.status === 500
           ) {
             message =
               'Erro ao criar perfil. Por favor, tente novamente. Se o erro persistir, contate o suporte.'

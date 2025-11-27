@@ -171,6 +171,9 @@ export default function Auth() {
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value })
+    // Clear errors when switching tabs
+    loginForm.clearErrors()
+    registerForm.clearErrors()
   }
 
   return (
@@ -237,7 +240,7 @@ export default function Auth() {
                     )}
                   />
                   {loginForm.formState.errors.root && (
-                    <p className="text-sm text-destructive font-medium text-center bg-destructive/10 p-2 rounded-md">
+                    <p className="text-sm text-destructive font-medium text-center bg-destructive/10 p-2 rounded-md animate-fade-in">
                       {loginForm.formState.errors.root.message}
                     </p>
                   )}
@@ -301,7 +304,7 @@ export default function Auth() {
                         <FormMessage />
                         {usernameAvailable === true &&
                           !registerForm.formState.errors.username && (
-                            <p className="text-xs text-green-500 font-medium mt-1">
+                            <p className="text-xs text-green-500 font-medium mt-1 animate-fade-in">
                               Nome de usuário disponível!
                             </p>
                           )}
@@ -386,7 +389,7 @@ export default function Auth() {
                     )}
                   />
                   {registerForm.formState.errors.root && (
-                    <p className="text-sm text-destructive font-medium text-center bg-destructive/10 p-2 rounded-md">
+                    <p className="text-sm text-destructive font-medium text-center bg-destructive/10 p-2 rounded-md animate-fade-in">
                       {registerForm.formState.errors.root.message}
                     </p>
                   )}
