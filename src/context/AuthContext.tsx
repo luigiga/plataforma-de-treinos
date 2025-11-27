@@ -192,6 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         logger.info('Starting user registration', {
           email,
           username: data.username,
+          role: data.role,
         })
 
         const { data: authData, error } = await supabase.auth.signUp({
@@ -210,7 +211,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         })
 
         if (error) {
-          logger.error('Registration failed', error)
+          logger.error('Registration failed', { error, email })
           let message =
             'Falha no registro. Por favor, revise seus detalhes e tente novamente.'
 
