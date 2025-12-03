@@ -287,7 +287,7 @@ Este projeto é privado e proprietário.
 
 ## 👥 Autores
 
-- Seu Nome - Desenvolvimento inicial
+- Luigi Garcia - Desenvolvimento inicial
 
 ## 🙏 Agradecimentos
 
