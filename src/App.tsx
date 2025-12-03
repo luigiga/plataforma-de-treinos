@@ -6,6 +6,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { ThemeProvider } from '@/components/theme-provider'
 import Layout from './components/Layout'
 import { Loading } from './components/Loading'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { ProtectedRoute } from './components/ProtectedRoute'
 
 // Lazy load pages for performance optimization
 const Index = React.lazy(() => import('./pages/Index'))
@@ -25,43 +27,141 @@ const Social = React.lazy(() => import('./pages/Social'))
 const NotFound = React.lazy(() => import('./pages/NotFound'))
 const ClientDetails = React.lazy(() => import('./pages/ClientDetails'))
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'))
+const EmailConfirm = React.lazy(() => import('./pages/EmailConfirm'))
 
 const App = () => (
-  <BrowserRouter
-    future={{ v7_startTransition: false, v7_relativeSplatPath: false }}
-  >
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <Suspense fallback={<Loading />}>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/login" element={<Auth />} />
-              <Route path="/register" element={<Auth />} />
-              <Route path="/signup" element={<Auth />} />
-              <Route path="/trainers" element={<ForTrainers />} />
-              <Route path="/plans" element={<SubscriptionPlans />} />
-              <Route path="/dashboard" element={<SubscriberDashboard />} />
-              <Route path="/workout/:id" element={<WorkoutDetails />} />
-              <Route path="/trainer-dashboard" element={<TrainerDashboard />} />
-              <Route path="/trainer/client/:id" element={<ClientDetails />} />
-              <Route path="/create-workout" element={<CreateEditWorkout />} />
-              <Route path="/edit-workout/:id" element={<CreateEditWorkout />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/profile/:username" element={<PublicProfile />} />
-              <Route path="/progress" element={<ProgressHistory />} />
-              <Route path="/social" element={<Social />} />
-              <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
-      </TooltipProvider>
-    </ThemeProvider>
-  </BrowserRouter>
+  <ErrorBoundary>
+    <BrowserRouter
+      future={{ v7_startTransition: false, v7_relativeSplatPath: false }}
+    >
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Suspense fallback={<Loading />}>
+            <Routes>
+              <Route element={<Layout />}>
+                {/* Rotas públicas */}
+                <Route path="/" element={<Index />} />
+                <Route
+                  path="/auth"
+                  element={
+                    <ProtectedRoute redirectIfAuthenticated>
+                      <Auth />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/auth/confirm" element={<EmailConfirm />} />
+                <Route
+                  path="/login"
+                  element={
+                    <ProtectedRoute redirectIfAuthenticated>
+                      <Auth />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/register"
+                  element={
+                    <ProtectedRoute redirectIfAuthenticated>
+                      <Auth />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/signup"
+                  element={
+                    <ProtectedRoute redirectIfAuthenticated>
+                      <Auth />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/trainers" element={<ForTrainers />} />
+                <Route path="/plans" element={<SubscriptionPlans />} />
+                <Route path="/workout/:id" element={<WorkoutDetails />} />
+                <Route path="/profile/:username" element={<PublicProfile />} />
+
+                {/* Rotas protegidas - Requer autenticação */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['subscriber']}>
+                      <SubscriberDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/trainer-dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['trainer']}>
+                      <TrainerDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/trainer/client/:id"
+                  element={
+                    <ProtectedRoute allowedRoles={['trainer']}>
+                      <ClientDetails />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/create-workout"
+                  element={
+                    <ProtectedRoute allowedRoles={['trainer', 'admin']}>
+                      <CreateEditWorkout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/edit-workout/:id"
+                  element={
+                    <ProtectedRoute allowedRoles={['trainer', 'admin']}>
+                      <CreateEditWorkout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/progress"
+                  element={
+                    <ProtectedRoute allowedRoles={['subscriber']}>
+                      <ProgressHistory />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/social"
+                  element={
+                    <ProtectedRoute>
+                      <Social />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin-dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </TooltipProvider>
+      </ThemeProvider>
+    </BrowserRouter>
+  </ErrorBoundary>
 )
 
 export default App

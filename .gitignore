@@ -29,3 +29,8 @@ screenshot.png
 
 # Environment variables
 .env*
+
+# Supabase temp files
+supabase/.temp/
+*.temp.txt
+database.types.temp.txt

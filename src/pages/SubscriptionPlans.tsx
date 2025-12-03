@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -9,73 +9,50 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import { Check } from 'lucide-react'
+import { Check, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/context/AuthContext'
 import { PaymentDialog } from '@/components/PaymentDialog'
+import { useProducts } from '@/hooks/use-payments'
+import { useReferral } from '@/hooks/use-referrals'
 import { useNavigate } from 'react-router-dom'
+import { Product } from '@/services/payments/products'
 
 export default function SubscriptionPlans() {
   const [isAnnual, setIsAnnual] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState<{
-    name: string
-    price: number
-  } | null>(null)
-  const { user, updateUser } = useAuth()
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const { user } = useAuth()
   const navigate = useNavigate()
+  const { referralTrainerId } = useReferral()
 
-  const plans = [
-    {
-      name: 'Básico',
-      price: isAnnual ? 19.9 : 29.9,
-      description: 'Para quem está começando.',
-      features: ['Acesso a 5 treinos/mês', 'Suporte básico', 'Sem anúncios'],
-      popular: false,
-      id: 'basic',
-    },
-    {
-      name: 'Premium',
-      price: isAnnual ? 39.9 : 49.9,
-      description: 'O favorito dos nossos usuários.',
-      features: [
-        'Acesso ilimitado',
-        'Todos os trainers',
-        'Downloads offline',
-        'Suporte prioritário',
-      ],
-      popular: true,
-      id: 'premium',
-    },
-    {
-      name: 'VIP',
-      price: isAnnual ? 69.9 : 89.9,
-      description: 'Experiência completa e personalizada.',
-      features: [
-        'Tudo do Premium',
-        'Consultoria mensal',
-        'Plano nutricional básico',
-      ],
-      popular: false,
-      id: 'vip',
-    },
-  ]
+  // Buscar produtos de assinatura do banco
+  const { data: products, isLoading } = useProducts({ type: 'subscription' })
 
-  const handleSubscribeClick = (plan: { name: string; price: number }) => {
+  // Filtrar produtos por período (mensal ou anual)
+  const filteredProducts = products?.filter((p) => {
+    if (isAnnual) {
+      return p.billing_period === 'year'
+    }
+    return p.billing_period === 'month'
+  }) || []
+
+  // Ordenar por preço
+  const sortedProducts = [...filteredProducts].sort((a, b) => a.price - b.price)
+
+  // Marcar o mais popular (meio termo de preço)
+  const popularIndex = Math.floor(sortedProducts.length / 2)
+
+  const handleSubscribeClick = (product: Product) => {
     if (!user) {
       navigate('/auth?tab=register')
       return
     }
-    setSelectedPlan(plan)
+    setSelectedProduct(product)
   }
 
   const handlePaymentSuccess = () => {
-    if (selectedPlan) {
-      updateUser({
-        subscriptionStatus: 'active',
-        plan: selectedPlan.name.toLowerCase() as any,
-      })
-      navigate('/dashboard')
-    }
+    setSelectedProduct(null)
+    navigate('/dashboard')
   }
 
   return (
@@ -106,60 +83,83 @@ export default function SubscriptionPlans() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-        {plans.map((plan) => (
-          <Card
-            key={plan.name}
-            className={`relative flex flex-col ${plan.popular ? 'border-primary shadow-xl md:scale-105 z-10' : 'shadow-md'}`}
-          >
-            {plan.popular && (
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <Badge className="bg-primary text-white px-3 py-1">
-                  Mais Popular
-                </Badge>
-              </div>
-            )}
-            <CardHeader>
-              <CardTitle className="text-2xl">{plan.name}</CardTitle>
-              <CardDescription>{plan.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-              <div className="mb-6">
-                <span className="text-4xl font-bold">
-                  R$ {plan.price.toFixed(2)}
-                </span>
-                <span className="text-muted-foreground">/mês</span>
-              </div>
-              <ul className="space-y-3">
-                {plan.features.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm">
-                    <Check size={16} className="text-green-500" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button
-                className="w-full"
-                variant={plan.popular ? 'default' : 'outline'}
-                onClick={() => handleSubscribeClick(plan)}
-              >
-                {user?.plan === plan.id ? 'Plano Atual' : 'Assinar Agora'}
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      ) : sortedProducts.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">
+            Nenhum plano disponível no momento.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {sortedProducts.map((product, index) => {
+              const isPopular = index === popularIndex && sortedProducts.length >= 2
+              const periodText = product.billing_period === 'year' ? 'ano' : 'mês'
+              
+              return (
+                <Card
+                  key={product.id}
+                  className={`relative flex flex-col ${isPopular ? 'border-primary shadow-xl md:scale-105 z-10' : 'shadow-md'}`}
+                >
+                  {isPopular && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                      <Badge className="bg-primary text-white px-3 py-1">
+                        Mais Popular
+                      </Badge>
+                    </div>
+                  )}
+                  <CardHeader>
+                    <CardTitle className="text-2xl">{product.name}</CardTitle>
+                    <CardDescription>
+                      {product.description || 'Plano de assinatura'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-grow">
+                    <div className="mb-6">
+                      <span className="text-4xl font-bold">
+                        R$ {Number(product.price).toFixed(2).replace('.', ',')}
+                      </span>
+                      <span className="text-muted-foreground">/{periodText}</span>
+                    </div>
+                    {referralTrainerId && (
+                      <div className="mb-4 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                        <p className="text-xs text-green-700 dark:text-green-300">
+                          🎉 Você ganhou 10% de desconto através do link de referência!
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                  <CardFooter>
+                    <Button
+                      className="w-full"
+                      variant={isPopular ? 'default' : 'outline'}
+                      onClick={() => handleSubscribeClick(product)}
+                    >
+                      Assinar Agora
+                    </Button>
+                  </CardFooter>
+                </Card>
+              )
+            })}
+          </div>
 
-      {selectedPlan && (
-        <PaymentDialog
-          open={!!selectedPlan}
-          onOpenChange={(open) => !open && setSelectedPlan(null)}
-          planName={selectedPlan.name}
-          price={selectedPlan.price}
-          onSuccess={handlePaymentSuccess}
-        />
+          {selectedProduct && (
+            <PaymentDialog
+              open={!!selectedProduct}
+              onOpenChange={(open) => !open && setSelectedProduct(null)}
+              productId={selectedProduct.id}
+              planName={selectedProduct.name}
+              price={Number(selectedProduct.price)}
+              type="subscription"
+              billingPeriod={selectedProduct.billing_period || 'month'}
+              onSuccess={handlePaymentSuccess}
+            />
+          )}
+        </>
       )}
     </div>
   )

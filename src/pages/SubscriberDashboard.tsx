@@ -2,8 +2,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useData } from '@/context/DataContext'
+import { useWorkouts } from '@/hooks/use-workouts'
+import { OptimizedImage } from '@/components/OptimizedImage'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { PaginationControls } from '@/components/PaginationControls'
 import {
   Card,
   CardContent,
@@ -26,25 +29,26 @@ import { CalendarSync } from '@/components/CalendarSync'
 
 export default function SubscriberDashboard() {
   const { user } = useAuth()
-  const { workouts } = useData()
+  const { workouts: allWorkouts } = useData()
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('Todos')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 12
 
-  if (!user || user.role !== 'subscriber') {
-    return (
-      <div className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
-        <p className="text-muted-foreground mb-8">
-          Esta página é exclusiva para Assinantes.
-        </p>
-        <Button asChild>
-          <Link to="/auth?tab=login">Fazer Login</Link>
-        </Button>
-      </div>
-    )
-  }
+  // Usar hook otimizado com paginação
+  const { data: workoutsData, isLoading } = useWorkouts({
+    page: currentPage,
+    pageSize,
+  })
 
-  const recommendedWorkouts = workouts
+  const workouts = workoutsData?.data || []
+  const totalWorkouts = workoutsData?.total || 0
+  const totalPages = Math.ceil(totalWorkouts / pageSize)
+
+  // ProtectedRoute já garante que user existe e tem role 'subscriber'
+  if (!user) return null
+
+  const recommendedWorkouts = allWorkouts
     .filter(
       (w) =>
         user.preferences?.some((pref) => w.category.includes(pref)) &&
@@ -60,6 +64,18 @@ export default function SubscriberDashboard() {
       categoryFilter === 'Todos' || workout.category.includes(categoryFilter)
     return matchesSearch && matchesCategory && workout.status === 'published'
   })
+
+  // Resetar para página 1 quando filtros mudarem
+  const handleFilterChange = (newFilter: string) => {
+    setCategoryFilter(newFilter)
+    setCurrentPage(1)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value)
+    setCurrentPage(1)
+  }
+
 
   const categories = [
     'Todos',
@@ -96,7 +112,7 @@ export default function SubscriberDashboard() {
               placeholder="Buscar treinos..."
               className="pl-10 w-full sm:w-[300px] rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary transition-all"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
             />
           </div>
         </div>
@@ -147,7 +163,7 @@ export default function SubscriberDashboard() {
           <Tabs
             defaultValue="Todos"
             className="mb-8"
-            onValueChange={setCategoryFilter}
+            onValueChange={handleFilterChange}
           >
             <TabsList className="w-full justify-start overflow-x-auto h-auto p-1 bg-transparent gap-2 no-scrollbar touch-pan-x">
               {categories.map((cat) => (
@@ -170,10 +186,11 @@ export default function SubscriberDashboard() {
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="relative h-48 overflow-hidden">
-                    <img
+                    <OptimizedImage
                       src={workout.image}
                       alt={workout.title}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      lazy={true}
                     />
                     <div className="absolute top-2 right-2">
                       <Badge
@@ -219,6 +236,22 @@ export default function SubscriberDashboard() {
               </Link>
             ))}
           </div>
+          {isLoading && (
+            <div className="text-center py-8 text-muted-foreground">
+              Carregando treinos...
+            </div>
+          )}
+          {!isLoading && filteredWorkouts.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum treino encontrado.
+            </div>
+          )}
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            className="mt-8"
+          />
         </div>
         <div className="lg:col-span-1">
           <div className="sticky top-24 space-y-6">

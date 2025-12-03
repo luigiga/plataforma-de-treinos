@@ -65,6 +65,7 @@ interface AuthContextType {
   deleteUser: (id: string) => Promise<void>
   toggleUserStatus: (id: string) => Promise<void>
   checkUsernameAvailability: (username: string) => Promise<boolean>
+  loadAllUsers: () => Promise<User[]>
   loading: boolean
 }
 
@@ -118,14 +119,88 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [])
 
   const fetchProfile = useCallback(async (userId: string) => {
-    const profile = await profileService.getProfile(userId)
-    if (!profile) return null
-    return mapProfileToUser(profile)
+    try {
+      let profile = await profileService.getProfile(userId)
+      
+      if (!profile) {
+        logger.warn('Profile not found for user', userId)
+        
+        // Se o perfil não existe, tentar criar manualmente usando dados da sessão
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session?.user?.id === userId) {
+          const usernameFromEmail = session.user.email?.split('@')[0] || 'user'
+          const metadata = session.user.user_metadata || {}
+          
+          try {
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert({
+                id: userId,
+                username: metadata.username || usernameFromEmail,
+                full_name: metadata.full_name || metadata.name || '',
+                avatar_url: metadata.avatar_url || '',
+                email: session.user.email || '',
+                role: metadata.role || 'subscriber',
+                bio: metadata.bio || '',
+                metadata: {},
+                status: 'active',
+              })
+            
+            if (insertError) {
+              logger.error('Failed to create profile manually', insertError)
+              // Se falhou, pode ser que o perfil já existe ou há problema de permissão
+              // Aguardar um pouco e tentar buscar novamente
+              await new Promise(resolve => setTimeout(resolve, 1000))
+              profile = await profileService.getProfile(userId)
+            } else {
+              // Buscar o perfil recém-criado
+              profile = await profileService.getProfile(userId)
+            }
+          } catch (err) {
+            logger.error('Error creating profile manually', err)
+          }
+        }
+        
+        // Se ainda não encontrou após tentar criar, fazer retry
+        if (!profile) {
+          await new Promise(resolve => setTimeout(resolve, 500))
+          profile = await profileService.getProfile(userId)
+        }
+        
+        if (!profile) {
+          logger.error('Profile still not found after retry and creation attempt', userId)
+          return null
+        }
+      }
+      
+      return mapProfileToUser(profile)
+    } catch (error) {
+      logger.error('Error in fetchProfile', error)
+      return null
+    }
   }, [])
 
   const fetchAllUsers = useCallback(async () => {
-    const profiles = await profileService.getAllProfiles()
-    setAllUsers(profiles.map(mapProfileToUser))
+    // OTIMIZAÇÃO: Não carregar todos os usuários na inicialização
+    // Isso será carregado apenas quando necessário (ex: AdminDashboard)
+    // Para evitar carregar centenas/milhares de perfis desnecessariamente
+    setAllUsers([])
+  }, [])
+  
+  /**
+   * Carregar todos os usuários (usado apenas quando necessário, ex: AdminDashboard)
+   * Esta função deve ser chamada explicitamente quando precisar de todos os usuários
+   */
+  const loadAllUsers = useCallback(async () => {
+    try {
+      const profiles = await profileService.getAllProfiles()
+      setAllUsers(profiles.map(mapProfileToUser))
+      return profiles.map(mapProfileToUser)
+    } catch (error) {
+      logger.error('Error loading all users', error)
+      return []
+    }
   }, [])
 
   useEffect(() => {
@@ -153,15 +228,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     })
 
-    fetchAllUsers()
+    // Não carregar todos os usuários na inicialização (otimização de performance)
+    // fetchAllUsers() removido - será carregado apenas quando necessário
 
     return () => subscription.unsubscribe()
-  }, [fetchProfile, fetchAllUsers])
+  }, [fetchProfile])
 
   const login = useCallback(
     async (email: string, password: string): Promise<{ error: any }> => {
       try {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
@@ -174,6 +250,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           }
           return { error: { message } }
         }
+        
+        // Se login foi bem-sucedido, buscar o perfil imediatamente para atualizar o estado
+        // Isso garante que o user seja atualizado rapidamente e o useEffect em Auth.tsx
+        // possa fazer o redirecionamento
+        if (data.session?.user) {
+          const profile = await fetchProfile(data.session.user.id)
+          if (profile) {
+            setUser(profile)
+            setLoading(false)
+          }
+        }
+        
         toast.success('Login realizado com sucesso!')
         return { error: null }
       } catch (err: any) {
@@ -183,7 +271,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
     },
-    [],
+    [fetchProfile],
   )
 
   const register = useCallback(
@@ -245,6 +333,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
           if (authData.session) {
             toast.success('Conta criada com sucesso!')
+            
+            // Se há sessão imediata, buscar o perfil para atualizar o estado
+            // Se o perfil não existir (trigger falhou), criar manualmente
+            if (authData.user) {
+              let profile = await fetchProfile(authData.user.id)
+              
+              // Se o perfil não existe, criar manualmente
+              if (!profile) {
+                logger.warn('Profile not found after registration, creating manually', {
+                  userId: authData.user.id,
+                })
+                
+                try {
+                  // Criar perfil manualmente
+                  // Extrair username do email se não fornecido
+                  const usernameFromEmail = email.split('@')[0] || 'user'
+                  const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert({
+                      id: authData.user.id,
+                      username: data.username || usernameFromEmail,
+                      full_name: data.name || '',
+                      avatar_url: data.avatar || '',
+                      email: email,
+                      role: data.role || 'subscriber',
+                      bio: data.bio || '',
+                      metadata: {},
+                      status: 'active',
+                    })
+                  
+                  if (profileError) {
+                    logger.error('Failed to create profile manually', profileError)
+                    toast.error('Conta criada, mas houve um problema ao criar o perfil. Tente fazer login novamente.')
+                  } else {
+                    // Buscar o perfil recém-criado
+                    profile = await fetchProfile(authData.user.id)
+                  }
+                } catch (err) {
+                  logger.error('Error creating profile manually', err)
+                }
+              }
+              
+              if (profile) {
+                setUser(profile)
+                setLoading(false)
+              }
+            }
 
             // Trigger welcome email
             supabase.functions
@@ -404,6 +539,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       deleteUser,
       toggleUserStatus,
       checkUsernameAvailability,
+      loadAllUsers,
       loading,
     }),
     [
@@ -416,6 +552,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       deleteUser,
       toggleUserStatus,
       checkUsernameAvailability,
+      loadAllUsers,
       loading,
     ],
   )

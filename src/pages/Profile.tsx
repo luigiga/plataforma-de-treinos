@@ -43,6 +43,7 @@ import { toast } from 'sonner'
 import { ShareProfileDialog } from '@/components/ShareProfileDialog'
 import { useDebounce } from '@/hooks/use-debounce'
 import { NotificationSettings } from '@/components/NotificationSettings'
+import { logger } from '@/lib/logger'
 
 const profileSchema = z.object({
   username: z
@@ -66,6 +67,8 @@ const socialSchema = z.object({
 
 export default function Profile() {
   const { user, updateUser, checkUsernameAvailability } = useAuth()
+  const [isSubmittingProfile, setIsSubmittingProfile] = useState(false)
+  const [isSubmittingSocial, setIsSubmittingSocial] = useState(false)
   const { following } = useData()
   const [uploading, setUploading] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -226,6 +229,7 @@ export default function Profile() {
   }
 
   const onProfileSubmit = async (data: z.infer<typeof profileSchema>) => {
+    setIsSubmittingProfile(true)
     try {
       if (usernameAvailable === false) {
         profileForm.setError('username', {
@@ -243,18 +247,25 @@ export default function Profile() {
       const { error } = await updateUser(updates)
       if (error) throw error
     } catch (error: any) {
-      console.error(error)
+      logger.error('Error updating profile', error)
+      toast.error('Erro ao atualizar perfil. Tente novamente.')
+    } finally {
+      setIsSubmittingProfile(false)
     }
   }
 
   const onSocialSubmit = async (data: z.infer<typeof socialSchema>) => {
+    setIsSubmittingSocial(true)
     try {
       const { error } = await updateUser({
         socialLinks: data,
       })
       if (error) throw error
     } catch (error: any) {
-      console.error(error)
+      logger.error('Error updating social links', error)
+      toast.error('Erro ao atualizar links sociais. Tente novamente.')
+    } finally {
+      setIsSubmittingSocial(false)
     }
   }
 

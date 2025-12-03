@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
+import { Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ArrowLeft, TrendingUp, Calendar, Plus } from 'lucide-react'
@@ -28,6 +29,7 @@ export default function ClientDetails() {
     useData()
   const { user } = useAuth()
   const [selectedWorkout, setSelectedWorkout] = useState('')
+  const [isAssigning, setIsAssigning] = useState(false)
 
   const client = publicUsers.find((u) => u.id === id)
   const progressLogs = id ? getUserProgress(id) : []
@@ -44,10 +46,15 @@ export default function ClientDetails() {
     )
   }
 
-  const handleAssign = () => {
-    if (selectedWorkout && id) {
-      assignWorkout(id, trainerId, selectedWorkout)
-      setSelectedWorkout('')
+  const handleAssign = async () => {
+    if (selectedWorkout && id && !isAssigning) {
+      setIsAssigning(true)
+      try {
+        await assignWorkout(id, trainerId, selectedWorkout)
+        setSelectedWorkout('')
+      } finally {
+        setIsAssigning(false)
+      }
     }
   }
 
@@ -122,9 +129,15 @@ export default function ClientDetails() {
                     <Button
                       className="w-full"
                       onClick={handleAssign}
-                      disabled={!selectedWorkout}
+                      disabled={!selectedWorkout || isAssigning}
                     >
-                      Confirmar Atribuição
+                      {isAssigning ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Atribuindo...
+                        </>
+                      ) : (
+                        'Confirmar Atribuição'
+                      )}
                     </Button>
                   </div>
                 </DialogContent>

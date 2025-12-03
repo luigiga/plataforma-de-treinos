@@ -12,7 +12,7 @@ export function Footer() {
                 <Dumbbell size={16} />
               </div>
               <span className="font-display font-bold text-lg tracking-tight">
-                FitPlatform
+                FitPlatform.
               </span>
             </Link>
             <p className="text-sm text-muted-foreground">

@@ -143,6 +143,7 @@ export default function Auth() {
       })
       toast.error(error.message)
     }
+    // O redirecionamento será feito pelo useEffect que monitora o user
   }
 
   async function onRegister(data: z.infer<typeof registerSchema>) {
@@ -154,7 +155,7 @@ export default function Auth() {
       return
     }
 
-    const { error } = await register(data.email, data.password, {
+    const { error, data: authData } = await register(data.email, data.password, {
       username: data.username,
       name: data.name,
       role: data.isTrainer ? 'trainer' : 'subscriber',
@@ -166,6 +167,17 @@ export default function Auth() {
         message: error.message,
       })
       toast.error(error.message)
+    } else if (authData?.session) {
+      // Se há sessão imediata (email confirmation desabilitado)
+      // O redirecionamento será feito pelo useEffect que monitora o user
+      // Limpar formulário após sucesso
+      registerForm.reset()
+    } else {
+      // Se não há sessão (email confirmation required)
+      // Redirecionar para a aba de login com mensagem informativa
+      registerForm.reset()
+      setSearchParams({ tab: 'login' })
+      toast.info('Verifique seu email para confirmar a conta antes de fazer login')
     }
   }
 

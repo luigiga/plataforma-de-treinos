@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useData } from '@/context/DataContext'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
+import { Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -31,43 +32,51 @@ export function ProgressLogger({
   const [open, setOpen] = useState(false)
   const [duration, setDuration] = useState('')
   const [notes, setNotes] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || isSubmitting) return
 
-    addProgressLog({
-      userId: user.id,
-      workoutId,
-      workoutTitle,
-      date: new Date().toISOString(),
-      duration: Number(duration),
-      notes,
-    })
+    setIsSubmitting(true)
+    try {
+      addProgressLog({
+        userId: user.id,
+        workoutId,
+        workoutTitle,
+        date: new Date().toISOString(),
+        duration: Number(duration),
+        notes,
+      })
 
-    // Gamification Logic
-    const newPoints = (user.points || 0) + 10
-    const newBadges = [...(user.badges || [])]
+      // Gamification Logic
+      const newPoints = (user.points || 0) + 10
+      const newBadges = [...(user.badges || [])]
 
-    if (!newBadges.includes('focused')) {
-      // Simple check: if points > 50 (approx 5 workouts), award badge
-      if (newPoints >= 50) {
-        newBadges.push('focused')
-        toast.success('Nova Conquista: Focado! (Completou 5 treinos)')
+      if (!newBadges.includes('focused')) {
+        // Simple check: if points > 50 (approx 5 workouts), award badge
+        if (newPoints >= 50) {
+          newBadges.push('focused')
+          toast.success('Nova Conquista: Focado! (Completou 5 treinos)')
+        }
       }
+
+      if (!newBadges.includes('master') && newPoints >= 1000) {
+        newBadges.push('master')
+        toast.success('Nova Conquista: Mestre! (1000 pontos)')
+      }
+
+      await updateUser({ points: newPoints, badges: newBadges })
+      toast.success('Você ganhou +10 XP!')
+
+      setOpen(false)
+      setDuration('')
+      setNotes('')
+    } catch (error) {
+      toast.error('Erro ao registrar progresso')
+    } finally {
+      setIsSubmitting(false)
     }
-
-    if (!newBadges.includes('master') && newPoints >= 1000) {
-      newBadges.push('master')
-      toast.success('Nova Conquista: Mestre! (1000 pontos)')
-    }
-
-    updateUser({ points: newPoints, badges: newBadges })
-    toast.success('Você ganhou +10 XP!')
-
-    setOpen(false)
-    setDuration('')
-    setNotes('')
   }
 
   return (
@@ -107,7 +116,15 @@ export function ProgressLogger({
             />
           </div>
           <DialogFooter>
-            <Button type="submit">Salvar Registro (+10 XP)</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...
+                </>
+              ) : (
+                'Salvar Registro (+10 XP)'
+              )}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

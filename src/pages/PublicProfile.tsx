@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
+import { logger } from '@/lib/logger'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,7 @@ export default function PublicProfile() {
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
   const { followUser, unfollowUser, isFollowing, isPending } = useData()
+  const [isFollowingLoading, setIsFollowingLoading] = useState(false)
 
   useEffect(() => {
     async function fetchProfile() {
@@ -43,7 +45,7 @@ export default function PublicProfile() {
 
         setProfile(data)
       } catch (error) {
-        console.error('Error fetching profile:', error)
+        logger.error('Error fetching profile', error)
         toast.error('Perfil não encontrado ou erro ao carregar.')
       } finally {
         setLoading(false)
@@ -80,15 +82,21 @@ export default function PublicProfile() {
   const following = user ? isFollowing(user.id, profile.id) : false
   const pending = user ? isPending(user.id, profile.id) : false
 
-  const handleFollowAction = () => {
-    if (!user) {
-      toast.error('Faça login para seguir usuários.')
+  const handleFollowAction = async () => {
+    if (!user || isFollowingLoading) {
+      if (!user) toast.error('Faça login para seguir usuários.')
       return
     }
-    if (following || pending) {
-      unfollowUser(user.id, profile.id)
-    } else {
-      followUser(user.id, profile.id)
+    
+    setIsFollowingLoading(true)
+    try {
+      if (following || pending) {
+        await unfollowUser(user.id, profile.id)
+      } else {
+        await followUser(user.id, profile.id)
+      }
+    } finally {
+      setIsFollowingLoading(false)
     }
   }
 
@@ -128,8 +136,13 @@ export default function PublicProfile() {
                   onClick={handleFollowAction}
                   variant={following || pending ? 'outline' : 'default'}
                   className="w-32"
+                  disabled={isFollowingLoading}
                 >
-                  {following ? (
+                  {isFollowingLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Aguarde
+                    </>
+                  ) : following ? (
                     <>
                       <UserCheck className="mr-2 h-4 w-4" /> Seguindo
                     </>

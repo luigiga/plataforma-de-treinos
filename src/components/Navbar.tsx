@@ -77,7 +77,7 @@ export function Navbar() {
               <Dumbbell size={20} />
             </div>
             <span className="font-display font-bold text-lg md:text-xl tracking-tight text-foreground hidden sm:inline-block">
-              FitPlatform
+              FitPlatform.
             </span>
           </Link>
 

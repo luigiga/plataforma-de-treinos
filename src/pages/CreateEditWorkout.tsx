@@ -26,8 +26,9 @@ import {
   FormDescription,
 } from '@/components/ui/form'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, ArrowLeft } from 'lucide-react'
+import { Plus, ArrowLeft, Loader2 } from 'lucide-react'
 import { ExerciseFormItem } from '@/components/ExerciseFormItem'
+import { useState } from 'react'
 
 const variationSchema = z.object({
   name: z.string(),
@@ -61,6 +62,26 @@ export default function CreateEditWorkout() {
   const { user } = useAuth()
   const isEditing = !!id
   const existingWorkout = workouts.find((w) => w.id === id)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Validação de permissões: apenas trainers podem criar/editar workouts
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth?tab=login')
+      return
+    }
+    if (user.role !== 'trainer' && user.role !== 'admin') {
+      navigate('/dashboard')
+      return
+    }
+    // Se está editando, verificar se o workout pertence ao trainer
+    if (isEditing && existingWorkout) {
+      if (existingWorkout.trainerId !== user.id && user.role !== 'admin') {
+        navigate('/trainer-dashboard')
+        return
+      }
+    }
+  }, [user, isEditing, existingWorkout, navigate])
 
   const form = useForm<z.infer<typeof workoutSchema>>({
     resolver: zodResolver(workoutSchema),
@@ -102,22 +123,29 @@ export default function CreateEditWorkout() {
     }
   }, [isEditing, existingWorkout, form])
 
-  const onSubmit = (data: z.infer<typeof workoutSchema>) => {
-    const workoutData = {
-      ...data,
-      trainerId: user?.id || '101',
-      category: ['Geral'],
-      status: 'published' as const,
-      exercises: data.exercises.map((e, i) => ({ ...e, id: `new-${i}` })),
-    }
+  const onSubmit = async (data: z.infer<typeof workoutSchema>) => {
+    setIsSubmitting(true)
+    try {
+      const workoutData = {
+        ...data,
+        trainerId: user?.id || '101',
+        category: ['Geral'],
+        status: 'published' as const,
+        exercises: data.exercises.map((e, i) => ({ ...e, id: `new-${i}` })),
+      }
 
-    if (isEditing && id) {
-      updateWorkout(id, workoutData)
-    } else {
-      addWorkout(workoutData)
-    }
+      if (isEditing && id) {
+        await updateWorkout(id, workoutData)
+      } else {
+        await addWorkout(workoutData)
+      }
 
-    navigate('/trainer-dashboard')
+      navigate('/trainer-dashboard')
+    } catch (error) {
+      // Error handling já está no contexto
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -281,8 +309,15 @@ export default function CreateEditWorkout() {
             >
               Cancelar
             </Button>
-            <Button type="submit" className="w-full sm:w-auto">
-              Salvar Treino
+            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isEditing ? 'Atualizando...' : 'Criando...'}
+                </>
+              ) : (
+                isEditing ? 'Atualizar Treino' : 'Criar Treino'
+              )}
             </Button>
           </div>
         </form>

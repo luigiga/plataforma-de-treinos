@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useData } from '@/context/DataContext'
+import { useTrainerWorkouts } from '@/hooks/use-workouts'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -12,30 +14,26 @@ import { CalendarSync } from '@/components/CalendarSync'
 
 export default function TrainerDashboard() {
   const { user } = useAuth()
-  const { getWorkoutsByTrainer, deleteWorkout, following, publicUsers } =
-    useData()
+  const { deleteWorkout, following, publicUsers } = useData()
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
 
   const trainerId = user?.id === '1' ? '101' : user?.id || ''
-  const trainerWorkouts = getWorkoutsByTrainer(trainerId)
+  const { data: workoutsData, isLoading } = useTrainerWorkouts(trainerId, {
+    page: currentPage,
+    pageSize,
+  })
+
+  const trainerWorkouts = workoutsData?.data || []
+  const totalWorkouts = workoutsData?.total || 0
 
   const myClients = following
     .filter((f) => f.followingId === trainerId)
     .map((f) => publicUsers.find((u) => u.id === f.followerId))
     .filter((u): u is typeof u & {} => !!u)
 
-  if (!user || user.role !== 'trainer') {
-    return (
-      <div className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
-        <p className="text-muted-foreground mb-8">
-          Esta página é exclusiva para Personal Trainers.
-        </p>
-        <Button asChild>
-          <Link to="/auth?tab=login">Fazer Login</Link>
-        </Button>
-      </div>
-    )
-  }
+  // ProtectedRoute já garante que user existe e tem role 'trainer'
+  if (!user) return null
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
@@ -81,7 +79,7 @@ export default function TrainerDashboard() {
 
         <TabsContent value="overview">
           <TrainerOverview
-            totalWorkouts={trainerWorkouts.length}
+            totalWorkouts={totalWorkouts}
             totalClients={myClients.length}
           />
         </TabsContent>
@@ -92,6 +90,10 @@ export default function TrainerDashboard() {
           <TrainerWorkouts
             workouts={trainerWorkouts}
             onDelete={deleteWorkout}
+            isLoading={isLoading}
+            currentPage={currentPage}
+            totalPages={Math.ceil(totalWorkouts / pageSize)}
+            onPageChange={setCurrentPage}
           />
         </TabsContent>
         <TabsContent value="messages">

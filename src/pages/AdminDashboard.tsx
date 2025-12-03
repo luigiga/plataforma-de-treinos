@@ -1,7 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth, User } from '@/context/AuthContext'
+import { profileService } from '@/services/profile'
 import { Button } from '@/components/ui/button'
+import { PaginationControls } from '@/components/PaginationControls'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -35,6 +44,8 @@ import {
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
+import { logger } from '@/lib/logger'
 import {
   ChartContainer,
   ChartTooltip,
@@ -50,28 +61,113 @@ import {
 } from 'recharts'
 
 export default function AdminDashboard() {
-  const { user, allUsers, deleteUser, toggleUserStatus } = useAuth()
+  const { user, deleteUser, toggleUserStatus } = useAuth()
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
+  const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [users, setUsers] = useState<User[]>([])
+  const [totalUsers, setTotalUsers] = useState(0)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [userToToggle, setUserToToggle] = useState<User | null>(null)
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const pageSize = 20
 
+  // Função para mapear profile para User
+  const mapProfileToUser = (profile: any): User => ({
+    id: profile.id,
+    name: profile.full_name || profile.username || 'Usuário',
+    email: profile.email || '',
+    avatar: profile.avatar_url || '',
+    role: (profile.role as 'subscriber' | 'trainer' | 'admin') || 'subscriber',
+    username: profile.username || '',
+    bio: profile.bio || '',
+    status: profile.status || 'active',
+    socialLinks: profile.metadata?.socialLinks,
+    preferences: profile.metadata?.preferences,
+    notificationPreferences: profile.metadata?.notificationPreferences,
+    subscriptionStatus: profile.metadata?.subscriptionStatus,
+    plan: profile.metadata?.plan,
+    points: profile.metadata?.points || 0,
+    badges: profile.metadata?.badges || [],
+  })
+
+  // Carregar usuários com paginação e filtros
   useEffect(() => {
-    if (!user) {
-      navigate('/auth?tab=login')
-    } else if (user.role !== 'admin') {
-      toast.error('Acesso não autorizado.')
-      navigate(user.role === 'trainer' ? '/trainer-dashboard' : '/dashboard')
-    }
-  }, [user, navigate])
+    const loadUsers = async () => {
+      if (!user || user.role !== 'admin') return
 
+      setLoadingUsers(true)
+      try {
+        const result = await profileService.getAllProfilesPaginated({
+          page: currentPage,
+          pageSize,
+          role: roleFilter !== 'all' ? roleFilter : undefined,
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          search: searchTerm || undefined,
+        })
+
+        setUsers(result.data.map(mapProfileToUser))
+        setTotalUsers(result.total)
+      } catch (error) {
+        toast.error('Erro ao carregar usuários')
+        logger.error('Error loading users', error)
+      } finally {
+        setLoadingUsers(false)
+      }
+    }
+
+    loadUsers()
+  }, [user, currentPage, roleFilter, statusFilter, searchTerm])
+
+  // Resetar página quando filtros mudarem
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, roleFilter, statusFilter])
+
+  // Removido verificação manual - ProtectedRoute já faz isso
   if (!user || user.role !== 'admin') return null
 
-  const filteredUsers = allUsers.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const totalPages = Math.ceil(totalUsers / pageSize)
+
+  // Estatísticas - buscar totais separadamente para não depender da página atual
+  const [stats, setStats] = useState({
+    total: 0,
+    subscribers: 0,
+    trainers: 0,
+    admins: 0,
+    active: 0,
+  })
+
+  useEffect(() => {
+    const loadStats = async () => {
+      if (!user || user.role !== 'admin') return
+
+      try {
+        // Buscar totais por role e status
+        const [allResult, subscribersResult, trainersResult, adminsResult, activeResult] = await Promise.all([
+          profileService.getAllProfilesPaginated({ page: 1, pageSize: 1 }),
+          profileService.getAllProfilesPaginated({ page: 1, pageSize: 1, role: 'subscriber' }),
+          profileService.getAllProfilesPaginated({ page: 1, pageSize: 1, role: 'trainer' }),
+          profileService.getAllProfilesPaginated({ page: 1, pageSize: 1, role: 'admin' }),
+          profileService.getAllProfilesPaginated({ page: 1, pageSize: 1, status: 'active' }),
+        ])
+
+        setStats({
+          total: allResult.total,
+          subscribers: subscribersResult.total,
+          trainers: trainersResult.total,
+          admins: adminsResult.total,
+          active: activeResult.total,
+        })
+      } catch (error) {
+        logger.error('Error loading stats', error)
+      }
+    }
+
+    loadStats()
+  }, [user])
 
   const handleDeleteConfirm = () => {
     if (userToDelete) {
@@ -93,7 +189,7 @@ export default function AdminDashboard() {
     { name: 'Mar', users: 180 },
     { name: 'Abr', users: 220 },
     { name: 'Mai', users: 280 },
-    { name: 'Jun', users: allUsers.length + 300 },
+    { name: 'Jun', users: totalUsers + 300 },
   ]
 
   return (
@@ -107,14 +203,37 @@ export default function AdminDashboard() {
             Visão geral do sistema e gestão de usuários.
           </p>
         </div>
-        <div className="relative w-full md:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Buscar usuários..."
-            className="pl-10 w-full md:w-[300px] rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Buscar usuários..."
+              className="pl-10 w-full sm:w-[250px] rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="Role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Roles</SelectItem>
+              <SelectItem value="subscriber">Assinantes</SelectItem>
+              <SelectItem value="trainer">Trainers</SelectItem>
+              <SelectItem value="admin">Admins</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Status</SelectItem>
+              <SelectItem value="active">Ativos</SelectItem>
+              <SelectItem value="inactive">Inativos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -127,7 +246,10 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{allUsers.length}</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Total de usuários
+            </p>
           </CardContent>
         </Card>
         <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
@@ -138,9 +260,10 @@ export default function AdminDashboard() {
             <Activity className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {allUsers.filter((u) => u.role === 'subscriber').length}
-            </div>
+            <div className="text-2xl font-bold">{stats.subscribers}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.total > 0 ? Math.round((stats.subscribers / stats.total) * 100) : 0}% do total
+            </p>
           </CardContent>
         </Card>
         <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
@@ -151,9 +274,10 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {allUsers.filter((u) => u.role === 'trainer').length}
-            </div>
+            <div className="text-2xl font-bold">{stats.trainers}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.total > 0 ? Math.round((stats.trainers / stats.total) * 100) : 0}% do total
+            </p>
           </CardContent>
         </Card>
         <Card className="border-none shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black">
@@ -246,7 +370,23 @@ export default function AdminDashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((u) => (
+                {loadingUsers ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Carregando usuários...
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      Nenhum usuário encontrado.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  users.map((u) => (
                   <TableRow key={u.id} className="hover:bg-secondary/30">
                     <TableCell className="flex items-center gap-3">
                       <Avatar>
@@ -326,20 +466,20 @@ export default function AdminDashboard() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
-                {filteredUsers.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-8 text-muted-foreground"
-                    >
-                      Nenhum usuário encontrado.
-                    </TableCell>
-                  </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>
           </div>
+          {totalPages > 1 && (
+            <div className="p-4 border-t">
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

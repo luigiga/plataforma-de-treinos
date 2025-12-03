@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useData, PublicUser } from '@/context/DataContext'
 import { useAuth } from '@/context/AuthContext'
+import { socialService } from '@/services/social'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,6 +20,8 @@ import { useDebounce } from '@/hooks/use-debounce'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FollowRequests } from '@/components/social/FollowRequests'
 import { FollowList } from '@/components/social/FollowList'
+import { PaginationControls } from '@/components/PaginationControls'
+import { logger } from '@/lib/logger'
 
 export default function Social() {
   const {
@@ -27,45 +30,70 @@ export default function Social() {
     unfollowUser,
     isFollowing,
     isPending,
-    searchUsers,
     following,
   } = useData()
   const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState<PublicUser[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [loadingFollows, setLoadingFollows] = useState<Set<string>>(new Set())
+  const pageSize = 12
   const debouncedSearch = useDebounce(searchTerm, 500)
 
   useEffect(() => {
     const performSearch = async () => {
       if (!debouncedSearch) {
-        setSearchResults(publicUsers)
+        // Se não há busca, mostrar primeiros usuários públicos
+        setSearchResults(publicUsers.slice(0, pageSize))
+        setTotalPages(Math.ceil(publicUsers.length / pageSize))
+        setCurrentPage(1)
         return
       }
 
       setIsSearching(true)
       try {
-        const results = await searchUsers(debouncedSearch)
-        setSearchResults(results)
+        const result = await socialService.searchUsersPaginated(debouncedSearch, {
+          page: currentPage,
+          pageSize,
+        })
+        setSearchResults(result.data)
+        setTotalPages(Math.ceil(result.total / pageSize))
       } catch (error) {
-        console.error('Search error:', error)
+        logger.error('Search error', error)
       } finally {
         setIsSearching(false)
       }
     }
 
     performSearch()
-  }, [debouncedSearch, publicUsers, searchUsers])
+  }, [debouncedSearch, currentPage, publicUsers])
 
-  const handleFollowToggle = (targetUserId: string) => {
+  // Resetar página quando busca mudar
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch])
+
+  const handleFollowToggle = async (targetUserId: string) => {
     if (!user) return
-    if (
-      isFollowing(user.id, targetUserId) ||
-      isPending(user.id, targetUserId)
-    ) {
-      unfollowUser(user.id, targetUserId)
-    } else {
-      followUser(user.id, targetUserId)
+    
+    setLoadingFollows((prev) => new Set(prev).add(targetUserId))
+    try {
+      if (
+        isFollowing(user.id, targetUserId) ||
+        isPending(user.id, targetUserId)
+      ) {
+        await unfollowUser(user.id, targetUserId)
+      } else {
+        await followUser(user.id, targetUserId)
+      }
+    } finally {
+      setLoadingFollows((prev) => {
+        const next = new Set(prev)
+        next.delete(targetUserId)
+        return next
+      })
     }
   }
 
@@ -180,8 +208,13 @@ export default function Social() {
                             }
                             className="flex-1 h-8"
                             onClick={() => handleFollowToggle(publicUser.id)}
+                            disabled={loadingFollows.has(publicUser.id)}
                           >
-                            {isFollowed ? (
+                            {loadingFollows.has(publicUser.id) ? (
+                              <>
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" /> Aguarde
+                              </>
+                            ) : isFollowed ? (
                               <>
                                 <UserCheck className="mr-2 h-3 w-3" /> Seguindo
                               </>
@@ -218,6 +251,14 @@ export default function Social() {
             <div className="text-center py-12 text-muted-foreground">
               Nenhum usuário encontrado.
             </div>
+          )}
+          {totalPages > 1 && (
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              className="mt-8"
+            />
           )}
         </TabsContent>
 

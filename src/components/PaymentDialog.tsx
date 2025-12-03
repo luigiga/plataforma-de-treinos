@@ -1,110 +1,113 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { CreditCard, Lock } from 'lucide-react'
-import { toast } from 'sonner'
+import { StripeCheckout } from '@/components/payments/StripeCheckout'
+import { useCreateSubscription, useCreatePaymentIntent } from '@/hooks/use-payments'
+import { useReferral } from '@/hooks/use-referrals'
+import { Loader2 } from 'lucide-react'
 
 interface PaymentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  productId: string
   planName: string
   price: number
+  type: 'subscription' | 'one_time'
+  billingPeriod?: 'month' | 'year'
   onSuccess: () => void
 }
 
 export function PaymentDialog({
   open,
   onOpenChange,
+  productId,
   planName,
   price,
+  type,
+  billingPeriod,
   onSuccess,
 }: PaymentDialogProps) {
-  const [loading, setLoading] = useState(false)
-  const [cardNumber, setCardNumber] = useState('')
-  const [expiry, setExpiry] = useState('')
-  const [cvc, setCvc] = useState('')
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const { referralTrainerId } = useReferral()
+  const createSubscription = useCreateSubscription()
+  const createPaymentIntent = useCreatePaymentIntent()
 
-  const handlePayment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+  useEffect(() => {
+    if (open && productId) {
+      createClientSecret()
+    } else {
+      setClientSecret(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, productId])
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    setLoading(false)
-    onOpenChange(false)
-    onSuccess()
-    toast.success('Pagamento processado com sucesso!')
+  const createClientSecret = async () => {
+    setIsLoading(true)
+    try {
+      if (type === 'subscription') {
+        const result = await createSubscription.mutateAsync({
+          productId,
+          referralTrainerId: referralTrainerId || undefined,
+        })
+        setClientSecret(result.clientSecret)
+      } else {
+        const result = await createPaymentIntent.mutateAsync({
+          productId,
+          amount: price,
+          referralTrainerId: referralTrainerId || undefined,
+        })
+        setClientSecret(result.clientSecret)
+      }
+    } catch (error) {
+      console.error('Error creating payment', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
+
+  const handleSuccess = () => {
+    onSuccess()
+    onOpenChange(false)
+    setClientSecret(null)
+  }
+
+  const periodText = billingPeriod === 'year' ? 'ano' : 'mês'
+  const description =
+    type === 'subscription'
+      ? `Assinando plano ${planName} por R$ ${price.toFixed(2)}/${periodText}`
+      : `Comprando ${planName} por R$ ${price.toFixed(2)}`
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Pagamento Seguro</DialogTitle>
-          <DialogDescription>
-            Assinando plano {planName} por R$ {price.toFixed(2)}/mês
-          </DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handlePayment} className="space-y-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="card">Número do Cartão</Label>
-            <div className="relative">
-              <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="card"
-                placeholder="0000 0000 0000 0000"
-                className="pl-10"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(e.target.value)}
-                maxLength={19}
-                required
-              />
+        <div className="py-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="expiry">Validade</Label>
-              <Input
-                id="expiry"
-                placeholder="MM/AA"
-                value={expiry}
-                onChange={(e) => setExpiry(e.target.value)}
-                maxLength={5}
-                required
-              />
+          ) : clientSecret ? (
+            <StripeCheckout
+              clientSecret={clientSecret}
+              amount={price}
+              description={description}
+              onSuccess={handleSuccess}
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Erro ao inicializar pagamento. Tente novamente.
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="cvc">CVC</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                <Input
-                  id="cvc"
-                  placeholder="123"
-                  className="pl-8"
-                  value={cvc}
-                  onChange={(e) => setCvc(e.target.value)}
-                  maxLength={3}
-                  required
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="pt-4">
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Processando...' : 'Confirmar Pagamento'}
-            </Button>
-          </DialogFooter>
-        </form>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   )

@@ -9,6 +9,7 @@ import React, {
 import { toast } from 'sonner'
 import { SocialLinks, useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase/client'
+import { logger } from '@/lib/logger'
 import { notificationService } from '@/services/notifications'
 import { workoutService } from '@/services/workouts'
 import { socialService, FollowRelation } from '@/services/social'
@@ -37,6 +38,9 @@ export interface Workout {
   status: 'draft' | 'published'
   createdAt: string
   isCircuit?: boolean
+  price?: number
+  isPaid?: boolean
+  purchaseType?: 'subscription' | 'one_time' | 'free'
 }
 
 export interface Review {
@@ -149,17 +153,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refreshData = useCallback(async () => {
     try {
+      // OTIMIZAÇÃO: Limitar quantidade de dados carregados inicialmente
+      // Em vez de carregar TODOS os workouts, carregamos apenas os primeiros 50
+      // Para mais dados, use os hooks do React Query (useWorkouts)
       const [wData, rData, fData] = await Promise.all([
-        workoutService.fetchWorkouts(),
-        workoutService.fetchReviews(),
+        workoutService.fetchWorkoutsPaginated({ page: 1, pageSize: 50 }).then(res => res.data),
+        workoutService.fetchReviewsPaginated(undefined, { page: 1, pageSize: 100 }).then(res => res.data),
         socialService.fetchFollows(),
       ])
       setWorkouts(wData)
       setReviews(rData)
       setFollowing(fData)
 
-      // Fetch public users
-      const { data: uData } = await supabase.from('profiles').select('*')
+      // OTIMIZAÇÃO: Limitar perfis públicos carregados (apenas primeiros 100)
+      // Para busca, use o serviço de busca que já existe
+      const { data: uData } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, role, avatar_url, bio, metadata')
+        .limit(100)
+        .order('created_at', { ascending: false })
+      
       if (uData) {
         setPublicUsers(
           uData.map((p) => ({
@@ -174,7 +187,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         )
       }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      logger.error('Error fetching data', error)
     }
   }, [])
 
@@ -184,14 +197,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     if (user) {
-      notificationService.fetchNotifications(user.id).then(setNotifications)
+      // OTIMIZAÇÃO: Limitar notificações a 30 mais recentes
+      notificationService
+        .fetchNotificationsPaginated(user.id, { page: 1, pageSize: 30 })
+        .then((res) => setNotifications(res.data))
+        .catch((err) => logger.error('Error fetching notifications', err))
 
-      // Fetch user specific data
+      // OTIMIZAÇÃO: Limitar progress logs a 50 mais recentes
       supabase
         .from('progress_logs')
-        .select('*')
+        .select('id, user_id, workout_id, workout_title, date, duration, notes')
         .eq('user_id', user.id)
-        .then(({ data }) => {
+        .order('date', { ascending: false })
+        .limit(50)
+        .then(({ data, error }) => {
+          if (error) {
+            logger.error('Error fetching progress logs', error)
+            return
+          }
           if (data) {
             setProgressLogs(
               data.map((l: any) => ({
@@ -207,11 +230,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         })
 
+      // OTIMIZAÇÃO: Limitar messages a 50 mais recentes
       supabase
         .from('messages')
-        .select('*')
+        .select('id, sender_id, receiver_id, content, created_at, read')
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .then(({ data }) => {
+        .order('created_at', { ascending: false })
+        .limit(50)
+        .then(({ data, error }) => {
+          if (error) {
+            logger.error('Error fetching messages', error)
+            return
+          }
           if (data) {
             setMessages(
               data.map((m: any) => ({
@@ -226,11 +256,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         })
 
+      // OTIMIZAÇÃO: Limitar assignments a 20 mais recentes
       supabase
         .from('assignments')
-        .select('*')
+        .select('id, user_id, trainer_id, workout_id, assigned_at, status')
         .or(`user_id.eq.${user.id},trainer_id.eq.${user.id}`)
-        .then(({ data }) => {
+        .order('assigned_at', { ascending: false })
+        .limit(20)
+        .then(({ data, error }) => {
+          if (error) {
+            logger.error('Error fetching assignments', error)
+            return
+          }
           if (data) {
             setAssignments(
               data.map((a: any) => ({
@@ -262,6 +299,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateWorkout = useCallback(
     async (id: string, data: Partial<Workout>) => {
+      if (!user) {
+        toast.error('Você precisa estar logado para atualizar treinos.')
+        return
+      }
+
+      // Verificar se o workout pertence ao trainer ou se é admin
+      const workout = workouts.find((w) => w.id === id)
+      if (!workout) {
+        toast.error('Treino não encontrado.')
+        return
+      }
+
+      if (workout.trainerId !== user.id && user.role !== 'admin') {
+        toast.error('Você não tem permissão para atualizar este treino.')
+        return
+      }
+
       const { error } = await supabase
         .from('workouts')
         .update({
@@ -279,11 +333,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         toast.success('Treino atualizado!')
       }
     },
-    [refreshData],
+    [refreshData, user, workouts],
   )
 
   const deleteWorkout = useCallback(
     async (id: string) => {
+      if (!user) {
+        toast.error('Você precisa estar logado para excluir treinos.')
+        return
+      }
+
+      // Verificar se o workout pertence ao trainer ou se é admin
+      const workout = workouts.find((w) => w.id === id)
+      if (!workout) {
+        toast.error('Treino não encontrado.')
+        return
+      }
+
+      if (workout.trainerId !== user.id && user.role !== 'admin') {
+        toast.error('Você não tem permissão para excluir este treino.')
+        return
+      }
+
       try {
         await workoutService.deleteWorkout(id)
         refreshData()
@@ -292,7 +363,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         toast.error('Erro ao excluir treino')
       }
     },
-    [refreshData],
+    [refreshData, user, workouts],
   )
 
   const getWorkoutsByTrainer = useCallback(
@@ -362,7 +433,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
       )
     } catch (error) {
-      console.error(error)
+      logger.error('Error in DataContext', error)
     }
   }, [])
 
@@ -382,7 +453,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
           ])
         }
       } catch (error) {
-        console.error(error)
+        logger.error('Error in DataContext', error)
       }
     },
     [user],
@@ -493,14 +564,46 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const assignWorkout = useCallback(
     async (userId: string, trainerId: string, workoutId: string) => {
+      if (!user) {
+        toast.error('Você precisa estar logado para atribuir treinos.')
+        return
+      }
+
+      // Apenas trainers e admins podem atribuir treinos
+      if (user.role !== 'trainer' && user.role !== 'admin') {
+        toast.error('Apenas trainers podem atribuir treinos.')
+        return
+      }
+
+      // Verificar se o trainerId corresponde ao usuário logado (ou se é admin)
+      if (trainerId !== user.id && user.role !== 'admin') {
+        toast.error('Você não tem permissão para atribuir treinos como este trainer.')
+        return
+      }
+
+      // Verificar se o workout pertence ao trainer
+      const workout = workouts.find((w) => w.id === workoutId)
+      if (!workout) {
+        toast.error('Treino não encontrado.')
+        return
+      }
+
+      if (workout.trainerId !== trainerId && user.role !== 'admin') {
+        toast.error('Você só pode atribuir seus próprios treinos.')
+        return
+      }
+
       const { error } = await supabase.from('assignments').insert({
         user_id: userId,
         trainer_id: trainerId,
         workout_id: workoutId,
       })
 
-      if (error) toast.error('Erro ao atribuir treino')
-      else {
+      if (error) {
+        toast.error('Erro ao atribuir treino')
+        logger.error('Error assigning workout', error)
+        throw error // Re-throw para que o componente possa tratar
+      } else {
         setAssignments((prev) => [
           ...prev,
           {
@@ -521,7 +624,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         })
       }
     },
-    [addNotification],
+    [addNotification, user, workouts],
   )
 
   const sendMessage = useCallback(

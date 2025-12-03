@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Star } from 'lucide-react'
+import { Star, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
@@ -18,6 +18,7 @@ export function CommentsSection({ workoutId }: CommentsSectionProps) {
   const { user, updateUser } = useAuth()
   const [newComment, setNewComment] = useState('')
   const [rating, setRating] = useState(5)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const workoutReviews = reviews.filter((r) => r.workoutId === workoutId)
   const averageRating =
@@ -26,34 +27,41 @@ export function CommentsSection({ workoutId }: CommentsSectionProps) {
         workoutReviews.length
       : 0
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || isSubmitting) return
 
-    addReview({
-      workoutId,
-      userId: user.id,
-      userName: user.name,
-      userAvatar: user.avatar || '',
-      rating,
-      comment: newComment,
-    })
+    setIsSubmitting(true)
+    try {
+      addReview({
+        workoutId,
+        userId: user.id,
+        userName: user.name,
+        userAvatar: user.avatar || '',
+        rating,
+        comment: newComment,
+      })
 
-    // Gamification Logic
-    const newPoints = (user.points || 0) + 5
-    const newBadges = [...(user.badges || [])]
+      // Gamification Logic
+      const newPoints = (user.points || 0) + 5
+      const newBadges = [...(user.badges || [])]
 
-    // Mock check for social badge (usually would check review count)
-    if (!newBadges.includes('social') && Math.random() > 0.7) {
-      newBadges.push('social')
-      toast.success('Nova Conquista: Social! (Contribuiu com a comunidade)')
+      // Mock check for social badge (usually would check review count)
+      if (!newBadges.includes('social') && Math.random() > 0.7) {
+        newBadges.push('social')
+        toast.success('Nova Conquista: Social! (Contribuiu com a comunidade)')
+      }
+
+      await updateUser({ points: newPoints, badges: newBadges })
+      toast.success('Avaliação enviada! (+5 XP)')
+
+      setNewComment('')
+      setRating(5)
+    } catch (error) {
+      toast.error('Erro ao enviar avaliação')
+    } finally {
+      setIsSubmitting(false)
     }
-
-    updateUser({ points: newPoints, badges: newBadges })
-    toast.success('Avaliação enviada! (+5 XP)')
-
-    setNewComment('')
-    setRating(5)
   }
 
   return (
@@ -102,8 +110,14 @@ export function CommentsSection({ workoutId }: CommentsSectionProps) {
                 className="bg-background"
                 required
               />
-              <Button type="submit" className="btn-press">
-                Enviar Avaliação
+              <Button type="submit" className="btn-press" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...
+                  </>
+                ) : (
+                  'Enviar Avaliação'
+                )}
               </Button>
             </form>
           </CardContent>

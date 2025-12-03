@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { CheckCircle2, Users, TrendingUp, PlayCircle, Star } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { OptimizedImage } from '@/components/OptimizedImage'
 import {
   Carousel,
   CarouselContent,
@@ -50,14 +51,15 @@ export default function Index() {
             </div>
             <div className="relative animate-fade-in lg:animate-slide-up delay-200 mt-8 lg:mt-0">
               <div className="relative rounded-3xl overflow-hidden shadow-2xl transform hover:scale-[1.02] transition-transform duration-500 border-4 border-white dark:border-gray-800">
-                <img
+                <OptimizedImage
                   src="https://img.usecurling.com/p/800/600?q=fitness%20training"
                   alt="Treino em casa"
                   className="w-full h-auto object-cover"
+                  lazy={false}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
               </div>
-              <div className="absolute -bottom-6 -left-6 bg-white dark:bg-card p-4 rounded-2xl shadow-glass flex items-center gap-3 animate-float hidden md:flex border border-white/20">
+              <div className="absolute -bottom-6 -left-6 bg-white dark:bg-card p-4 rounded-2xl shadow-glass flex items-center gap-3 animate-float md:flex border border-white/20">
                 <div className="bg-green-100 p-2 rounded-full text-green-600">
                   <TrendingUp size={24} />
                 </div>
@@ -125,10 +127,11 @@ export default function Index() {
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 md:gap-16 items-center">
             <div className="order-2 lg:order-1 relative">
-              <img
+              <OptimizedImage
                 src="https://img.usecurling.com/p/600/800?q=personal%20trainer"
                 alt="Personal Trainer"
                 className="rounded-3xl shadow-2xl w-full max-w-md mx-auto lg:mx-0 border-4 border-white dark:border-gray-800"
+                lazy={false}
               />
             </div>
             <div className="order-1 lg:order-2 space-y-6 md:space-y-8 text-center lg:text-left">

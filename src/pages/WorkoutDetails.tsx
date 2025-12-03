@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
 import { useAuth } from '@/context/AuthContext'
+import { OptimizedImage } from '@/components/OptimizedImage'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,10 +13,13 @@ import {
   Video,
   Zap,
   Repeat,
+  Lock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CommentsSection } from '@/components/CommentsSection'
 import { ProgressLogger } from '@/components/ProgressLogger'
+import { WorkoutPurchaseButton } from '@/components/payments/WorkoutPurchaseButton'
+import { useWorkoutAccess } from '@/hooks/use-workout-access'
 import {
   Dialog,
   DialogContent,
@@ -29,13 +33,24 @@ export default function WorkoutDetails() {
   const { workouts } = useData()
   const { user } = useAuth()
   const workout = workouts.find((w) => w.id === id)
+  const { data: access, isLoading: accessLoading } = useWorkoutAccess(workout || null)
 
   if (!workout)
     return (
       <div className="container py-20 text-center">Treino não encontrado.</div>
     )
 
-  const handleStartWorkout = () => toast.success('Treino iniciado! Bom treino!')
+  const hasAccess = access?.hasAccess ?? false
+  const isPaid = workout.isPaid || false
+  const purchaseType = workout.purchaseType || 'free'
+
+  const handleStartWorkout = () => {
+    if (!hasAccess && isPaid) {
+      toast.error('Você precisa ter acesso a este treino para iniciá-lo')
+      return
+    }
+    toast.success('Treino iniciado! Bom treino!')
+  }
 
   return (
     <div className="container mx-auto px-4 py-6 md:py-8 max-w-5xl animate-fade-in">
@@ -48,10 +63,11 @@ export default function WorkoutDetails() {
       </Button>
 
       <div className="relative h-[250px] md:h-[450px] rounded-3xl overflow-hidden mb-8 shadow-ios-float">
-        <img
+        <OptimizedImage
           src={workout.image}
           alt={workout.title}
           className="w-full h-full object-cover"
+          lazy={false}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-6 md:p-8 text-white">
           <div className="flex flex-wrap gap-2 mb-4">
@@ -92,6 +108,34 @@ export default function WorkoutDetails() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="order-2 lg:order-1 lg:col-span-2 space-y-10">
+          {!hasAccess && isPaid && (
+            <Card className="mb-6 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <Lock className="h-6 w-6 text-yellow-600 dark:text-yellow-400 mt-1" />
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg mb-2">
+                      Conteúdo Bloqueado
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                      {purchaseType === 'subscription'
+                        ? 'Este treino requer uma assinatura ativa. Assine um plano para ter acesso a todos os treinos.'
+                        : 'Este treino é pago. Compre agora para ter acesso completo.'}
+                    </p>
+                    {purchaseType === 'subscription' && (
+                      <Button
+                        onClick={() => navigate('/plans')}
+                        className="w-full sm:w-auto"
+                      >
+                        Ver Planos
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <section>
             <h2 className="text-2xl font-bold mb-4">Sobre o Treino</h2>
             <p className="text-muted-foreground leading-relaxed text-lg">
@@ -101,8 +145,16 @@ export default function WorkoutDetails() {
 
           <section>
             <h2 className="text-2xl font-bold mb-6">Exercícios</h2>
-            <div className="space-y-6">
-              {workout.exercises.map((exercise, index) => (
+            {!hasAccess && isPaid ? (
+              <Card className="p-8 text-center border-dashed">
+                <Lock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  Os exercícios estão bloqueados. Adquira acesso para visualizar.
+                </p>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {workout.exercises.map((exercise, index) => (
                 <Card
                   key={exercise.id}
                   className="overflow-hidden border-none shadow-elevation"
@@ -189,7 +241,8 @@ export default function WorkoutDetails() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
+              </div>
+            )}
           </section>
           <section>
             <CommentsSection workoutId={workout.id} />
@@ -199,18 +252,44 @@ export default function WorkoutDetails() {
         <div className="order-1 lg:order-2 lg:col-span-1">
           <Card className="sticky top-24 border-none shadow-ios-float">
             <CardContent className="p-6 space-y-6">
-              <Button
-                size="lg"
-                className="w-full text-lg h-14 rounded-xl shadow-lg shadow-primary/25"
-                onClick={handleStartWorkout}
-              >
-                <Play className="mr-2 fill-current" /> Começar Treino
-              </Button>
-              {user && user.role === 'subscriber' && (
-                <ProgressLogger
-                  workoutId={workout.id}
-                  workoutTitle={workout.title}
-                />
+              {!hasAccess && isPaid ? (
+                <>
+                  {purchaseType === 'one_time' && workout.price ? (
+                    <WorkoutPurchaseButton
+                      workoutId={workout.id}
+                      workoutTitle={workout.title}
+                      price={workout.price}
+                    />
+                  ) : purchaseType === 'subscription' ? (
+                    <Button
+                      size="lg"
+                      className="w-full text-lg h-14 rounded-xl shadow-lg"
+                      onClick={() => navigate('/plans')}
+                    >
+                      <Lock className="mr-2 h-5 w-5" />
+                      Assinar para Acessar
+                    </Button>
+                  ) : null}
+                  <p className="text-xs text-center text-muted-foreground">
+                    Você não tem acesso a este treino
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Button
+                    size="lg"
+                    className="w-full text-lg h-14 rounded-xl shadow-lg shadow-primary/25"
+                    onClick={handleStartWorkout}
+                  >
+                    <Play className="mr-2 fill-current" /> Começar Treino
+                  </Button>
+                  {user && user.role === 'subscriber' && (
+                    <ProgressLogger
+                      workoutId={workout.id}
+                      workoutTitle={workout.title}
+                    />
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
