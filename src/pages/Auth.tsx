@@ -59,24 +59,27 @@ export default function Auth() {
   const location = useLocation()
   const { login, register, user, checkUsernameAvailability } = useAuth()
 
-  let defaultTab = searchParams.get('tab')
-  if (!defaultTab) {
+  let currentTab = searchParams.get('tab')
+  if (!currentTab) {
     if (location.pathname === '/register' || location.pathname === '/signup') {
-      defaultTab = 'register'
+      currentTab = 'register'
     } else {
-      defaultTab = 'login'
+      currentTab = 'login'
     }
   }
 
-  const defaultRole = searchParams.get('role') === 'trainer'
+  const activeTab = currentTab === 'register' ? 'register' : 'login'
+  const roleParam = searchParams.get('role')
+  const safeRedirect = sanitizeRedirectPath(searchParams.get('redirect'))
+  const defaultRole = roleParam === 'trainer'
 
   useEffect(() => {
-    if (user) {
-      if (user.role === 'admin') navigate('/admin-dashboard')
-      else if (user.role === 'trainer') navigate('/trainer-dashboard')
-      else navigate('/dashboard')
-    }
-  }, [user, navigate])
+    if (!user) return
+
+    navigate(safeRedirect || getDefaultDashboardPath(user.role), {
+      replace: true,
+    })
+  }, [user, navigate, safeRedirect])
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -132,7 +135,7 @@ export default function Auth() {
       }
     }
 
-    checkAvailability()
+    void checkAvailability()
   }, [debouncedUsername, checkUsernameAvailability, registerForm])
 
   async function onLogin(data: z.infer<typeof loginSchema>) {
@@ -143,7 +146,6 @@ export default function Auth() {
       })
       toast.error(error.message)
     }
-    // O redirecionamento será feito pelo useEffect que monitora o user
   }
 
   async function onRegister(data: z.infer<typeof registerSchema>) {
@@ -168,22 +170,31 @@ export default function Auth() {
       })
       toast.error(error.message)
     } else if (authData?.session) {
-      // Se há sessão imediata (email confirmation desabilitado)
-      // O redirecionamento será feito pelo useEffect que monitora o user
-      // Limpar formulário após sucesso
       registerForm.reset()
     } else {
-      // Se não há sessão (email confirmation required)
-      // Redirecionar para a aba de login com mensagem informativa
       registerForm.reset()
-      setSearchParams({ tab: 'login' })
+      setSearchParams(
+        buildAuthSearchParams({
+          tab: 'login',
+          role: roleParam,
+          redirect: safeRedirect,
+        }),
+      )
       toast.info('Verifique seu email para confirmar a conta antes de fazer login')
     }
   }
 
   const handleTabChange = (value: string) => {
-    setSearchParams({ tab: value })
-    // Clear errors when switching tabs
+    const nextTab = value === 'register' ? 'register' : 'login'
+
+    setSearchParams(
+      buildAuthSearchParams({
+        tab: nextTab,
+        role: roleParam,
+        redirect: safeRedirect,
+      }),
+    )
+
     loginForm.clearErrors()
     registerForm.clearErrors()
   }
@@ -201,8 +212,8 @@ export default function Auth() {
         </CardHeader>
         <CardContent>
           <Tabs
-            defaultValue={defaultTab}
-            value={defaultTab}
+            defaultValue={activeTab}
+            value={activeTab}
             onValueChange={handleTabChange}
             className="w-full"
           >
@@ -430,4 +441,53 @@ export default function Auth() {
       </Card>
     </div>
   )
+}
+
+function getDefaultDashboardPath(
+  role: 'subscriber' | 'trainer' | 'admin',
+): string {
+  switch (role) {
+    case 'admin':
+      return '/admin-dashboard'
+    case 'trainer':
+      return '/trainer-dashboard'
+    case 'subscriber':
+    default:
+      return '/dashboard'
+  }
+}
+
+function sanitizeRedirectPath(path?: string | null): string | null {
+  if (!path) return null
+
+  const normalizedPath = path.trim()
+
+  if (!normalizedPath.startsWith('/')) return null
+  if (normalizedPath.startsWith('//')) return null
+
+  return normalizedPath
+}
+
+function buildAuthSearchParams({
+  tab,
+  redirect,
+  role,
+}: {
+  tab: 'login' | 'register'
+  redirect?: string | null
+  role?: string | null
+}) {
+  const params = new URLSearchParams()
+  params.set('tab', tab)
+
+  const safeRedirect = sanitizeRedirectPath(redirect)
+  if (safeRedirect) {
+    params.set('redirect', safeRedirect)
+  }
+
+  if (role) {
+    params.set('role', role)
+  }
+
+  return params
 }
