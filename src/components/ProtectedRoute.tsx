@@ -71,11 +71,14 @@ export function ProtectedRoute({
     return <Loading />
   }
 
-  // Se redirectIfAuthenticated está ativo e usuário está autenticado
-  if (redirectIfAuthenticated && user) {
-    // Redirecionar para dashboard apropriado ou URL especificada
-    const targetPath = safeRedirectTo || getDefaultDashboardPath(user.role)
-    return <Navigate to={targetPath} replace />
+  // Página pública que deve redirecionar se já estiver autenticado
+  if (redirectIfAuthenticated) {
+    if (user) {
+      const targetPath = safeRedirectTo || getDefaultDashboardPath(user.role)
+      return <Navigate to={targetPath} replace />
+    }
+
+    return <>{children}</>
   }
 
   // Se não está autenticado e a rota requer autenticação
