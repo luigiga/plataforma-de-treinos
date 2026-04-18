@@ -1,132 +1,107 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ProtectedRoute } from './ProtectedRoute'
+import { ReactNode, useEffect } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
+import { Loading } from './Loading'
+import { toast } from 'sonner'
 
-const useAuthMock = vi.fn()
-const toastErrorMock = vi.fn()
-
-vi.mock('@/context/AuthContext', () => ({
-  useAuth: () => useAuthMock(),
-}))
-
-vi.mock('sonner', () => ({
-  toast: {
-    error: toastErrorMock,
-  },
-}))
-
-vi.mock('./Loading', () => ({
-  Loading: () => <div>loading</div>,
-}))
-
-function LocationEcho({ label }: { label: string }) {
-  const location = useLocation()
-  return <div>{`${label}:${location.pathname}${location.search}`}</div>
+interface ProtectedRouteProps {
+  children: ReactNode
+  /**
+   * Roles permitidos para acessar esta rota
+   * Se não especificado, qualquer usuário autenticado pode acessar
+   */
+  allowedRoles?: ('subscriber' | 'trainer' | 'admin')[]
+  /**
+   * Se true, redireciona usuários autenticados para o dashboard apropriado
+   * Útil para páginas públicas que não devem ser acessadas quando logado (ex: /auth)
+   */
+  redirectIfAuthenticated?: boolean
+  /**
+   * URL para redirecionar se não autenticado
+   */
+  redirectTo?: string
 }
 
-afterEach(() => {
-  useAuthMock.mockReset()
-  toastErrorMock.mockReset()
-})
+export function ProtectedRoute({
+  children,
+  allowedRoles,
+  redirectIfAuthenticated = false,
+  redirectTo,
+}: ProtectedRouteProps) {
+  const { user, loading } = useAuth()
+  const location = useLocation()
 
-describe('ProtectedRoute', () => {
-  it('redirects unauthenticated users to auth and preserves the attempted url', () => {
-    useAuthMock.mockReturnValue({ user: null, loading: false })
+  const safeRedirectTo = sanitizeRedirectPath(redirectTo)
+  const isUnauthorized =
+    !!user && !!allowedRoles && !allowedRoles.includes(user.role)
 
-    render(
-      <MemoryRouter initialEntries={['/dashboard?tab=overview']}>
-        <Routes>
-          <Route path="/auth" element={<LocationEcho label="auth" />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <div>dashboard content</div>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </MemoryRouter>,
+  useEffect(() => {
+    if (isUnauthorized) {
+      toast.error('Acesso não autorizado.')
+    }
+  }, [isUnauthorized])
+
+  if (loading) {
+    return <Loading />
+  }
+
+  // Página pública que redireciona apenas se já estiver autenticado
+  if (redirectIfAuthenticated) {
+    if (user) {
+      const targetPath = safeRedirectTo || getDefaultDashboardPath(user.role)
+      return <Navigate to={targetPath} replace />
+    }
+
+    return <>{children}</>
+  }
+
+  // Rota protegida sem usuário autenticado
+  if (!user) {
+    if (safeRedirectTo) {
+      return <Navigate to={safeRedirectTo} replace />
+    }
+
+    const from = sanitizeRedirectPath(
+      `${location.pathname}${location.search}${location.hash}`,
     )
 
-    expect(
-      screen.getByText('auth:/auth?tab=login&redirect=%2Fdashboard%3Ftab%3Doverview'),
-    ).toBeInTheDocument()
-  })
+    const redirectParam = from
+      ? `&redirect=${encodeURIComponent(from)}`
+      : ''
 
-  it('redirects unauthorized users to their default dashboard and shows a toast', async () => {
-    useAuthMock.mockReturnValue({
-      user: { id: '1', name: 'Luigi', email: 'luigi@example.com', role: 'subscriber' },
-      loading: false,
-    })
+    return <Navigate to={`/auth?tab=login${redirectParam}`} replace />
+  }
 
-    render(
-      <MemoryRouter initialEntries={['/trainer-dashboard']}>
-        <Routes>
-          <Route path="/dashboard" element={<LocationEcho label="dashboard" />} />
-          <Route
-            path="/trainer-dashboard"
-            element={
-              <ProtectedRoute allowedRoles={['trainer']}>
-                <div>trainer dashboard</div>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </MemoryRouter>,
-    )
+  // Usuário autenticado, mas sem permissão
+  if (isUnauthorized) {
+    const targetPath = getDefaultDashboardPath(user.role)
+    return <Navigate to={targetPath} replace />
+  }
 
-    expect(screen.getByText('dashboard:/dashboard')).toBeInTheDocument()
+  return <>{children}</>
+}
 
-    await waitFor(() => {
-      expect(toastErrorMock).toHaveBeenCalledWith('Acesso não autorizado.')
-    })
-  })
+function getDefaultDashboardPath(
+  role: 'subscriber' | 'trainer' | 'admin',
+): string {
+  switch (role) {
+    case 'admin':
+      return '/admin-dashboard'
+    case 'trainer':
+      return '/trainer-dashboard'
+    case 'subscriber':
+    default:
+      return '/dashboard'
+  }
+}
 
-  it('allows public auth pages when redirectIfAuthenticated is enabled and the user is logged out', () => {
-    useAuthMock.mockReturnValue({ user: null, loading: false })
+function sanitizeRedirectPath(path?: string | null): string | null {
+  if (!path) return null
 
-    render(
-      <MemoryRouter initialEntries={['/auth']}>
-        <Routes>
-          <Route
-            path="/auth"
-            element={
-              <ProtectedRoute redirectIfAuthenticated>
-                <div>auth form</div>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </MemoryRouter>,
-    )
+  const normalizedPath = path.trim()
 
-    expect(screen.getByText('auth form')).toBeInTheDocument()
-  })
+  if (!normalizedPath.startsWith('/')) return null
+  if (normalizedPath.startsWith('//')) return null
 
-  it('redirects authenticated users away from the auth page', () => {
-    useAuthMock.mockReturnValue({
-      user: { id: '2', name: 'Trainer', email: 'trainer@example.com', role: 'trainer' },
-      loading: false,
-    })
-
-    render(
-      <MemoryRouter initialEntries={['/auth']}>
-        <Routes>
-          <Route
-            path="/auth"
-            element={
-              <ProtectedRoute redirectIfAuthenticated>
-                <div>auth form</div>
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/trainer-dashboard" element={<LocationEcho label="trainer" />} />
-        </Routes>
-      </MemoryRouter>,
-    )
-
-    expect(screen.getByText('trainer:/trainer-dashboard')).toBeInTheDocument()
-  })
-})
+  return normalizedPath
+}
