@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -22,8 +22,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form'
+import {
+  buildAuthSearchParams,
+  getDefaultDashboardPath,
+  sanitizeRedirectPath,
+} from '@/lib/auth-routing'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -45,25 +49,30 @@ const registerSchema = z
   })
 
 export default function Auth() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { login, register, user } = useAuth()
-  const defaultTab = searchParams.get('tab') || 'login'
-  const defaultRole = searchParams.get('role') === 'trainer'
+
+  const roleParam = searchParams.get('role')
+  const activeTab = searchParams.get('tab') === 'register' ? 'register' : 'login'
+  const safeRedirect = sanitizeRedirectPath(searchParams.get('redirect'))
+  const defaultRole = roleParam === 'trainer'
 
   useEffect(() => {
-    if (user) {
-      if (user.role === 'trainer') {
-        navigate('/trainer-dashboard')
-      } else {
-        navigate('/dashboard')
-      }
-    }
-  }, [user, navigate])
+    if (!user) return
+
+    navigate(safeRedirect || getDefaultDashboardPath(user.role), {
+      replace: true,
+    })
+  }, [user, navigate, safeRedirect])
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '', isTrainer: false },
+    defaultValues: {
+      email: '',
+      password: '',
+      isTrainer: defaultRole,
+    },
   })
 
   const registerForm = useForm<z.infer<typeof registerSchema>>({
@@ -90,6 +99,18 @@ export default function Auth() {
     })
   }
 
+  const handleTabChange = (value: string) => {
+    const nextTab = value === 'register' ? 'register' : 'login'
+
+    setSearchParams(
+      buildAuthSearchParams({
+        tab: nextTab,
+        role: roleParam,
+        redirect: safeRedirect,
+      }),
+    )
+  }
+
   return (
     <div className="container mx-auto flex items-center justify-center min-h-[calc(100vh-140px)] py-10">
       <Card className="w-full max-w-md shadow-xl border-none bg-card/50 backdrop-blur-sm">
@@ -100,7 +121,12 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue={defaultTab} className="w-full">
+          <Tabs
+            defaultValue={activeTab}
+            value={activeTab}
+            onValueChange={handleTabChange}
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Entrar</TabsTrigger>
               <TabsTrigger value="register">Cadastrar</TabsTrigger>
