@@ -22,27 +22,6 @@ interface ProtectedRouteProps {
   redirectTo?: string
 }
 
-/**
- * Componente para proteger rotas que requerem autenticação
- * 
- * @example
- * // Proteger rota para qualquer usuário autenticado
- * <ProtectedRoute>
- *   <Dashboard />
- * </ProtectedRoute>
- * 
- * @example
- * // Proteger rota apenas para admins
- * <ProtectedRoute allowedRoles={['admin']}>
- *   <AdminDashboard />
- * </ProtectedRoute>
- * 
- * @example
- * // Página pública que redireciona se já estiver logado
- * <ProtectedRoute redirectIfAuthenticated redirectTo="/dashboard">
- *   <Auth />
- * </ProtectedRoute>
- */
 export function ProtectedRoute({
   children,
   allowedRoles,
@@ -52,45 +31,59 @@ export function ProtectedRoute({
   const { user, loading } = useAuth()
   const location = useLocation()
 
-  // Mostrar loading enquanto verifica autenticação
+  const safeRedirectTo = sanitizeRedirectPath(redirectTo)
+  const isUnauthorized =
+    !!user && !!allowedRoles && !allowedRoles.includes(user.role)
+
+  useEffect(() => {
+    if (isUnauthorized) {
+      toast.error('Acesso não autorizado.')
+    }
+  }, [isUnauthorized])
+
   if (loading) {
     return <Loading />
   }
 
-  // Se redirectIfAuthenticated está ativo e usuário está autenticado
-  if (redirectIfAuthenticated && user) {
-    // Redirecionar para dashboard apropriado ou URL especificada
-    const targetPath = redirectTo || getDefaultDashboardPath(user.role)
-    return <Navigate to={targetPath} replace />
+  // Página pública que redireciona apenas se já estiver autenticado
+  if (redirectIfAuthenticated) {
+    if (user) {
+      const targetPath = safeRedirectTo || getDefaultDashboardPath(user.role)
+      return <Navigate to={targetPath} replace />
+    }
+
+    return <>{children}</>
   }
 
-  // Se não está autenticado e a rota requer autenticação
+  // Rota protegida sem usuário autenticado
   if (!user) {
-    // Salvar a rota que tentou acessar para redirecionar após login
-    const from = location.pathname + location.search
-    return (
-      <Navigate
-        to={redirectTo || `/auth?tab=login&redirect=${encodeURIComponent(from)}`}
-        replace
-      />
+    if (safeRedirectTo) {
+      return <Navigate to={safeRedirectTo} replace />
+    }
+
+    const from = sanitizeRedirectPath(
+      `${location.pathname}${location.search}${location.hash}`,
     )
+
+    const redirectParam = from
+      ? `&redirect=${encodeURIComponent(from)}`
+      : ''
+
+    return <Navigate to={`/auth?tab=login${redirectParam}`} replace />
   }
 
-  // Se há restrição de roles e o usuário não tem permissão
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    toast.error('Acesso não autorizado.')
+  // Usuário autenticado, mas sem permissão
+  if (isUnauthorized) {
     const targetPath = getDefaultDashboardPath(user.role)
     return <Navigate to={targetPath} replace />
   }
 
-  // Tudo certo, renderizar o conteúdo
   return <>{children}</>
 }
 
-/**
- * Retorna o caminho do dashboard padrão baseado no role do usuário
- */
-function getDefaultDashboardPath(role: 'subscriber' | 'trainer' | 'admin'): string {
+function getDefaultDashboardPath(
+  role: 'subscriber' | 'trainer' | 'admin',
+): string {
   switch (role) {
     case 'admin':
       return '/admin-dashboard'
@@ -102,3 +95,13 @@ function getDefaultDashboardPath(role: 'subscriber' | 'trainer' | 'admin'): stri
   }
 }
 
+function sanitizeRedirectPath(path?: string | null): string | null {
+  if (!path) return null
+
+  const normalizedPath = path.trim()
+
+  if (!normalizedPath.startsWith('/')) return null
+  if (normalizedPath.startsWith('//')) return null
+
+  return normalizedPath
+}
