@@ -1,8 +1,9 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Layout from './components/Layout'
+import { ProtectedRoute } from './components/ProtectedRoute'
 import Index from './pages/Index'
 import Auth from './pages/Auth'
 import ForTrainers from './pages/ForTrainers'
@@ -25,16 +26,65 @@ const App = () => (
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
+          <Route
+            path="/auth"
+            element={
+              <ProtectedRoute redirectIfAuthenticated>
+                <Auth />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/trainers" element={<ForTrainers />} />
           <Route path="/plans" element={<SubscriptionPlans />} />
-          <Route path="/dashboard" element={<SubscriberDashboard />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['subscriber']}>
+                <SubscriberDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/workout/:id" element={<WorkoutDetails />} />
-          <Route path="/trainer-dashboard" element={<TrainerDashboard />} />
-          <Route path="/create-workout" element={<CreateEditWorkout />} />
-          <Route path="/edit-workout/:id" element={<CreateEditWorkout />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/progress" element={<ProgressHistory />} />
+          <Route
+            path="/trainer-dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['trainer']}>
+                <TrainerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/create-workout"
+            element={
+              <ProtectedRoute allowedRoles={['trainer']}>
+                <CreateEditWorkout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/edit-workout/:id"
+            element={
+              <ProtectedRoute allowedRoles={['trainer']}>
+                <CreateEditWorkout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/progress"
+            element={
+              <ProtectedRoute>
+                <ProgressHistory />
+              </ProtectedRoute>
+            }
+          />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
