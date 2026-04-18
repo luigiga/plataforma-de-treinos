@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -23,20 +23,25 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import {
-  buildAuthSearchParams,
-  getDefaultDashboardPath,
-  sanitizeRedirectPath,
-} from '@/lib/auth-routing'
+import { useDebounce } from '@/hooks/use-debounce'
+import { Loader2, Check, X } from 'lucide-react'
+import { toast } from 'sonner'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
-  isTrainer: z.boolean().default(false),
 })
 
 const registerSchema = z
   .object({
+    username: z
+      .string()
+      .trim()
+      .min(3, 'Username deve ter pelo menos 3 caracteres')
+      .regex(
+        /^[a-zA-Z0-9_]+$/,
+        'Username deve conter apenas letras, números e underline',
+      ),
     name: z.string().min(2, 'Nome muito curto'),
     email: z.string().email('Email inválido'),
     password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
@@ -51,10 +56,20 @@ const registerSchema = z
 export default function Auth() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { login, register, user } = useAuth()
+  const location = useLocation()
+  const { login, register, user, checkUsernameAvailability } = useAuth()
 
+  let currentTab = searchParams.get('tab')
+  if (!currentTab) {
+    if (location.pathname === '/register' || location.pathname === '/signup') {
+      currentTab = 'register'
+    } else {
+      currentTab = 'login'
+    }
+  }
+
+  const activeTab = currentTab === 'register' ? 'register' : 'login'
   const roleParam = searchParams.get('role')
-  const activeTab = searchParams.get('tab') === 'register' ? 'register' : 'login'
   const safeRedirect = sanitizeRedirectPath(searchParams.get('redirect'))
   const defaultRole = roleParam === 'trainer'
 
@@ -68,16 +83,14 @@ export default function Auth() {
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      isTrainer: defaultRole,
-    },
+    defaultValues: { email: '', password: '' },
   })
 
   const registerForm = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
+    mode: 'onChange',
     defaultValues: {
+      username: '',
       name: '',
       email: '',
       password: '',
@@ -86,17 +99,89 @@ export default function Auth() {
     },
   })
 
-  function onLogin(data: z.infer<typeof loginSchema>) {
-    const role = data.isTrainer ? 'trainer' : 'subscriber'
-    login(data.email, role)
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
+    null,
+  )
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
+  const watchedUsername = registerForm.watch('username')
+  const debouncedUsername = useDebounce(watchedUsername, 500)
+
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (!debouncedUsername || debouncedUsername.length < 3) {
+        setUsernameAvailable(null)
+        return
+      }
+
+      const regex = /^[a-zA-Z0-9_]+$/
+      if (!regex.test(debouncedUsername)) {
+        setUsernameAvailable(null)
+        return
+      }
+
+      setIsCheckingUsername(true)
+      const isAvailable = await checkUsernameAvailability(debouncedUsername)
+      setUsernameAvailable(isAvailable)
+      setIsCheckingUsername(false)
+
+      if (!isAvailable) {
+        registerForm.setError('username', {
+          type: 'manual',
+          message:
+            'Este nome de usuário já está em uso. Por favor, escolha um nome de usuário diferente.',
+        })
+      } else {
+        registerForm.clearErrors('username')
+      }
+    }
+
+    void checkAvailability()
+  }, [debouncedUsername, checkUsernameAvailability, registerForm])
+
+  async function onLogin(data: z.infer<typeof loginSchema>) {
+    const { error } = await login(data.email, data.password)
+    if (error) {
+      loginForm.setError('root', {
+        message: error.message,
+      })
+      toast.error(error.message)
+    }
   }
 
-  function onRegister(data: z.infer<typeof registerSchema>) {
-    register({
+  async function onRegister(data: z.infer<typeof registerSchema>) {
+    if (usernameAvailable === false) {
+      registerForm.setError('username', {
+        message:
+          'Este nome de usuário já está em uso. Por favor, escolha um nome de usuário diferente.',
+      })
+      return
+    }
+
+    const { error, data: authData } = await register(data.email, data.password, {
+      username: data.username,
       name: data.name,
-      email: data.email,
       role: data.isTrainer ? 'trainer' : 'subscriber',
+      avatar: `https://img.usecurling.com/ppl/medium?gender=${Math.random() > 0.5 ? 'male' : 'female'}`,
     })
+
+    if (error) {
+      registerForm.setError('root', {
+        message: error.message,
+      })
+      toast.error(error.message)
+    } else if (authData?.session) {
+      registerForm.reset()
+    } else {
+      registerForm.reset()
+      setSearchParams(
+        buildAuthSearchParams({
+          tab: 'login',
+          role: roleParam,
+          redirect: safeRedirect,
+        }),
+      )
+      toast.info('Verifique seu email para confirmar a conta antes de fazer login')
+    }
   }
 
   const handleTabChange = (value: string) => {
@@ -109,13 +194,18 @@ export default function Auth() {
         redirect: safeRedirect,
       }),
     )
+
+    loginForm.clearErrors()
+    registerForm.clearErrors()
   }
 
   return (
-    <div className="container mx-auto flex items-center justify-center min-h-[calc(100vh-140px)] py-10">
-      <Card className="w-full max-w-md shadow-xl border-none bg-card/50 backdrop-blur-sm">
+    <div className="container mx-auto flex items-center justify-center min-h-[calc(100vh-140px)] py-6 md:py-10 px-4">
+      <Card className="w-full max-w-md shadow-glass border-white/20 bg-white/50 backdrop-blur-md dark:bg-black/50">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Bem-vindo</CardTitle>
+          <CardTitle className="text-2xl md:text-3xl font-bold">
+            Bem-vindo
+          </CardTitle>
           <CardDescription>
             Entre ou crie sua conta para continuar
           </CardDescription>
@@ -127,9 +217,13 @@ export default function Auth() {
             onValueChange={handleTabChange}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="register">Cadastrar</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-secondary/50 p-1 rounded-xl">
+              <TabsTrigger value="login" className="rounded-lg">
+                Entrar
+              </TabsTrigger>
+              <TabsTrigger value="register" className="rounded-lg">
+                Cadastrar
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
@@ -168,50 +262,27 @@ export default function Auth() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={loginForm.control}
-                    name="isTrainer"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Sou Personal Trainer</FormLabel>
-                          <CardDescription>
-                            Marque se você deseja acessar como treinador.
-                          </CardDescription>
-                        </div>
-                      </FormItem>
+                  {loginForm.formState.errors.root && (
+                    <p className="text-sm text-destructive font-medium text-center bg-destructive/10 p-2 rounded-md animate-fade-in">
+                      {loginForm.formState.errors.root.message}
+                    </p>
+                  )}
+                  <Button
+                    type="submit"
+                    className="w-full rounded-xl h-12 text-lg"
+                    disabled={loginForm.formState.isSubmitting}
+                  >
+                    {loginForm.formState.isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Entrando...
+                      </>
+                    ) : (
+                      'Entrar'
                     )}
-                  />
-                  <Button type="submit" className="w-full">
-                    Entrar
                   </Button>
                 </form>
               </Form>
-              <div className="mt-4 text-center text-sm">
-                <span className="text-muted-foreground">Ou entre com</span>
-                <div className="flex justify-center gap-4 mt-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full"
-                  >
-                    G
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full"
-                  >
-                    A
-                  </Button>
-                </div>
-              </div>
             </TabsContent>
 
             <TabsContent value="register">
@@ -220,6 +291,49 @@ export default function Auth() {
                   onSubmit={registerForm.handleSubmit(onRegister)}
                   className="space-y-4"
                 >
+                  <FormField
+                    control={registerForm.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Username</FormLabel>
+                        <div className="relative">
+                          <FormControl>
+                            <Input
+                              placeholder="seu_username"
+                              autoComplete="username"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e)
+                                if (usernameAvailable !== null)
+                                  setUsernameAvailable(null)
+                              }}
+                            />
+                          </FormControl>
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {isCheckingUsername && (
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
+                            {!isCheckingUsername &&
+                              usernameAvailable === true && (
+                                <Check className="h-4 w-4 text-green-500" />
+                              )}
+                            {!isCheckingUsername &&
+                              usernameAvailable === false && (
+                                <X className="h-4 w-4 text-destructive" />
+                              )}
+                          </div>
+                        </div>
+                        <FormMessage />
+                        {usernameAvailable === true &&
+                          !registerForm.formState.errors.username && (
+                            <p className="text-xs text-green-500 font-medium mt-1 animate-fade-in">
+                              Nome de usuário disponível!
+                            </p>
+                          )}
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={registerForm.control}
                     name="name"
@@ -284,7 +398,7 @@ export default function Auth() {
                     control={registerForm.control}
                     name="isTrainer"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border p-4 bg-secondary/20">
                         <FormControl>
                           <Checkbox
                             checked={field.value}
@@ -293,15 +407,31 @@ export default function Auth() {
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel>Sou Personal Trainer</FormLabel>
-                          <CardDescription>
-                            Marque se você deseja publicar treinos.
-                          </CardDescription>
                         </div>
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full">
-                    Criar Conta
+                  {registerForm.formState.errors.root && (
+                    <p className="text-sm text-destructive font-medium text-center bg-destructive/10 p-2 rounded-md animate-fade-in">
+                      {registerForm.formState.errors.root.message}
+                    </p>
+                  )}
+                  <Button
+                    type="submit"
+                    className="w-full rounded-xl h-12 text-lg"
+                    disabled={
+                      registerForm.formState.isSubmitting ||
+                      usernameAvailable === false
+                    }
+                  >
+                    {registerForm.formState.isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Criando Conta...
+                      </>
+                    ) : (
+                      'Criar Conta'
+                    )}
                   </Button>
                 </form>
               </Form>
@@ -311,4 +441,53 @@ export default function Auth() {
       </Card>
     </div>
   )
+}
+
+function getDefaultDashboardPath(
+  role: 'subscriber' | 'trainer' | 'admin',
+): string {
+  switch (role) {
+    case 'admin':
+      return '/admin-dashboard'
+    case 'trainer':
+      return '/trainer-dashboard'
+    case 'subscriber':
+    default:
+      return '/dashboard'
+  }
+}
+
+function sanitizeRedirectPath(path?: string | null): string | null {
+  if (!path) return null
+
+  const normalizedPath = path.trim()
+
+  if (!normalizedPath.startsWith('/')) return null
+  if (normalizedPath.startsWith('//')) return null
+
+  return normalizedPath
+}
+
+function buildAuthSearchParams({
+  tab,
+  redirect,
+  role,
+}: {
+  tab: 'login' | 'register'
+  redirect?: string | null
+  role?: string | null
+}) {
+  const params = new URLSearchParams()
+  params.set('tab', tab)
+
+  const safeRedirect = sanitizeRedirectPath(redirect)
+  if (safeRedirect) {
+    params.set('redirect', safeRedirect)
+  }
+
+  if (role) {
+    params.set('role', role)
+  }
+
+  return params
 }
