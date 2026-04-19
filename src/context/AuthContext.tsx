@@ -239,16 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         const payload = buildProfileInsertPayload(authUser, data)
-        const { error } = await supabase.from('profiles').insert(payload)
-
-        if (error) {
-          logger.error('Failed to create profile manually', {
-            error,
-            userId: authUser.id,
-          })
-          return false
-        }
-
+        await profileService.createProfile(payload)
         return true
       } catch (error) {
         logger.error('Unexpected error creating profile manually', error)
@@ -592,10 +583,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!targetUser) return
 
       const newStatus = targetUser.status === 'active' ? 'inactive' : 'active'
+
       try {
+        const currentProfile = await profileService.getProfile(id)
+        const currentMetadata = normalizeProfileMetadata(currentProfile?.metadata)
+
         await profileService.updateProfile(id, {
           status: newStatus,
           metadata: {
+            ...currentMetadata,
             status: newStatus,
           },
         })
