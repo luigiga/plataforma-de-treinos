@@ -1,16 +1,16 @@
 import React, {
   createContext,
-  useContext,
-  useState,
-  useMemo,
   useCallback,
+  useContext,
   useEffect,
+  useMemo,
+  useState,
 } from 'react'
+import { AuthResponse, User as SupabaseAuthUser } from '@supabase/supabase-js'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase/client'
-import { Session, AuthResponse } from '@supabase/supabase-js'
-import { profileService } from '@/services/profile'
+import { profileService, Profile, ProfileUpdate } from '@/services/profile'
 
 export type UserRole = 'subscriber' | 'trainer' | 'admin'
 export type SubscriptionStatus = 'active' | 'inactive' | 'canceled'
@@ -29,6 +29,18 @@ export interface NotificationPreferences {
   newMessage: boolean
   workoutAssignment: boolean
   systemUpdates: boolean
+}
+
+interface ProfileMetadata {
+  socialLinks?: SocialLinks
+  preferences?: string[]
+  notificationPreferences?: NotificationPreferences
+  subscriptionStatus?: SubscriptionStatus
+  plan?: SubscriptionPlan
+  status?: UserStatus
+  points?: number
+  badges?: string[]
+  [key: string]: unknown
 }
 
 export interface User {
@@ -78,25 +90,110 @@ const defaultNotificationPreferences: NotificationPreferences = {
   systemUpdates: true,
 }
 
-const mapProfileToUser = (profile: any): User => ({
-  id: profile.id,
-  username: profile.username || '',
-  full_name: profile.full_name || '',
-  name: profile.full_name || profile.username || 'User',
-  email: profile.email || '',
-  role: (profile.role as UserRole) || 'subscriber',
-  avatar: profile.avatar_url,
-  bio: profile.bio,
-  socialLinks: profile.metadata?.socialLinks,
-  preferences: profile.metadata?.preferences,
-  notificationPreferences:
-    profile.metadata?.notificationPreferences || defaultNotificationPreferences,
-  subscriptionStatus: profile.metadata?.subscriptionStatus || 'inactive',
-  plan: profile.metadata?.plan || 'free',
-  status: profile.status || profile.metadata?.status || 'active',
-  points: profile.metadata?.points || 0,
-  badges: profile.metadata?.badges || [],
-})
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isUserRole(value: unknown): value is UserRole {
+  return value === 'subscriber' || value === 'trainer' || value === 'admin'
+}
+
+function normalizeProfileMetadata(value: unknown): ProfileMetadata {
+  if (!isRecord(value)) {
+    return {}
+  }
+
+  return value as ProfileMetadata
+}
+
+function getAuthMetadata(user: SupabaseAuthUser): Record<string, unknown> {
+  return isRecord(user.user_metadata) ? user.user_metadata : {}
+}
+
+function mapProfileToUser(profile: Profile): User {
+  const metadata = normalizeProfileMetadata(profile.metadata)
+  const profileRole = isUserRole(profile.role) ? profile.role : 'subscriber'
+
+  return {
+    id: profile.id,
+    username: profile.username || '',
+    full_name: profile.full_name || '',
+    name: profile.full_name || profile.username || 'User',
+    email: profile.email || '',
+    role: profileRole,
+    avatar: profile.avatar_url || undefined,
+    bio: profile.bio || undefined,
+    socialLinks: metadata.socialLinks,
+    preferences: metadata.preferences,
+    notificationPreferences:
+      metadata.notificationPreferences || defaultNotificationPreferences,
+    subscriptionStatus: metadata.subscriptionStatus || 'inactive',
+    plan: metadata.plan || 'free',
+    status:
+      (profile.status as UserStatus | null) ||
+      metadata.status ||
+      'active',
+    points: metadata.points || 0,
+    badges: metadata.badges || [],
+  }
+}
+
+function buildProfileInsertPayload(
+  authUser: SupabaseAuthUser,
+  data?: Partial<User>,
+) {
+  const authMetadata = getAuthMetadata(authUser)
+  const usernameFromEmail = authUser.email?.split('@')[0] || 'user'
+  const role = isUserRole(data?.role)
+    ? data.role
+    : isUserRole(authMetadata.role)
+      ? authMetadata.role
+      : 'subscriber'
+
+  const metadata: ProfileMetadata = {}
+
+  if (data?.socialLinks) metadata.socialLinks = data.socialLinks
+  if (data?.preferences) metadata.preferences = data.preferences
+  if (data?.notificationPreferences) {
+    metadata.notificationPreferences = data.notificationPreferences
+  }
+  if (data?.subscriptionStatus) metadata.subscriptionStatus = data.subscriptionStatus
+  if (data?.plan) metadata.plan = data.plan
+  if (data?.status) metadata.status = data.status
+  if (data?.points !== undefined) metadata.points = data.points
+  if (data?.badges) metadata.badges = data.badges
+
+  return {
+    id: authUser.id,
+    username:
+      data?.username ||
+      (typeof authMetadata.username === 'string' ? authMetadata.username : '') ||
+      usernameFromEmail,
+    full_name:
+      data?.full_name ||
+      data?.name ||
+      (typeof authMetadata.full_name === 'string' ? authMetadata.full_name : '') ||
+      (typeof authMetadata.name === 'string' ? authMetadata.name : '') ||
+      '',
+    avatar_url:
+      data?.avatar ||
+      (typeof authMetadata.avatar_url === 'string' ? authMetadata.avatar_url : '') ||
+      '',
+    email: authUser.email || data?.email || '',
+    role,
+    bio:
+      data?.bio ||
+      (typeof authMetadata.bio === 'string' ? authMetadata.bio : '') ||
+      '',
+    metadata,
+    status:
+      data?.status ||
+      (typeof authMetadata.status === 'string' ? authMetadata.status : '') ||
+      'active',
+  }
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -104,7 +201,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null)
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
-  const [session, setSession] = useState<Session | null>(null)
 
   useEffect(() => {
     if (
@@ -120,60 +216,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      let profile = await profileService.getProfile(userId)
-      
+      const profile = await profileService.getProfile(userId)
+
       if (!profile) {
         logger.warn('Profile not found for user', userId)
-        
-        // Se o perfil não existe, tentar criar manualmente usando dados da sessão
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (session?.user?.id === userId) {
-          const usernameFromEmail = session.user.email?.split('@')[0] || 'user'
-          const metadata = session.user.user_metadata || {}
-          
-          try {
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert({
-                id: userId,
-                username: metadata.username || usernameFromEmail,
-                full_name: metadata.full_name || metadata.name || '',
-                avatar_url: metadata.avatar_url || '',
-                email: session.user.email || '',
-                role: metadata.role || 'subscriber',
-                bio: metadata.bio || '',
-                metadata: {},
-                status: 'active',
-              })
-            
-            if (insertError) {
-              logger.error('Failed to create profile manually', insertError)
-              // Se falhou, pode ser que o perfil já existe ou há problema de permissão
-              // Aguardar um pouco e tentar buscar novamente
-              await new Promise(resolve => setTimeout(resolve, 1000))
-              profile = await profileService.getProfile(userId)
-            } else {
-              // Buscar o perfil recém-criado
-              profile = await profileService.getProfile(userId)
-            }
-          } catch (err) {
-            logger.error('Error creating profile manually', err)
-          }
-        }
-        
-        // Se ainda não encontrou após tentar criar, fazer retry
-        if (!profile) {
-          await new Promise(resolve => setTimeout(resolve, 500))
-          profile = await profileService.getProfile(userId)
-        }
-        
-        if (!profile) {
-          logger.error('Profile still not found after retry and creation attempt', userId)
-          return null
-        }
+        return null
       }
-      
+
       return mapProfileToUser(profile)
     } catch (error) {
       logger.error('Error in fetchProfile', error)
@@ -181,22 +230,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [])
 
-  const fetchAllUsers = useCallback(async () => {
-    // OTIMIZAÇÃO: Não carregar todos os usuários na inicialização
-    // Isso será carregado apenas quando necessário (ex: AdminDashboard)
-    // Para evitar carregar centenas/milhares de perfis desnecessariamente
-    setAllUsers([])
-  }, [])
-  
-  /**
-   * Carregar todos os usuários (usado apenas quando necessário, ex: AdminDashboard)
-   * Esta função deve ser chamada explicitamente quando precisar de todos os usuários
-   */
+  const createProfileIfMissing = useCallback(
+    async (authUser: SupabaseAuthUser, data?: Partial<User>) => {
+      try {
+        const existingProfile = await profileService.getProfile(authUser.id)
+        if (existingProfile) {
+          return true
+        }
+
+        const payload = buildProfileInsertPayload(authUser, data)
+        const { error } = await supabase.from('profiles').insert(payload)
+
+        if (error) {
+          logger.error('Failed to create profile manually', {
+            error,
+            userId: authUser.id,
+          })
+          return false
+        }
+
+        return true
+      } catch (error) {
+        logger.error('Unexpected error creating profile manually', error)
+        return false
+      }
+    },
+    [],
+  )
+
+  const loadUserFromAuthUser = useCallback(
+    async (authUser: SupabaseAuthUser, data?: Partial<User>) => {
+      let profile = await fetchProfile(authUser.id)
+      if (profile) {
+        return profile
+      }
+
+      await createProfileIfMissing(authUser, data)
+
+      profile = await fetchProfile(authUser.id)
+      if (profile) {
+        return profile
+      }
+
+      await sleep(500)
+      profile = await fetchProfile(authUser.id)
+
+      if (!profile) {
+        logger.error('Profile still unavailable after recovery attempts', {
+          userId: authUser.id,
+        })
+      }
+
+      return profile
+    },
+    [createProfileIfMissing, fetchProfile],
+  )
+
   const loadAllUsers = useCallback(async () => {
     try {
       const profiles = await profileService.getAllProfiles()
-      setAllUsers(profiles.map(mapProfileToUser))
-      return profiles.map(mapProfileToUser)
+      const mappedUsers = profiles.map(mapProfileToUser)
+      setAllUsers(mappedUsers)
+      return mappedUsers
     } catch (error) {
       logger.error('Error loading all users', error)
       return []
@@ -204,35 +299,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      if (session?.user) {
-        fetchProfile(session.user.id).then(setUser)
-      } else {
-        setLoading(false)
+    let isMounted = true
+
+    const bootstrapAuth = async () => {
+      setLoading(true)
+
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+
+        if (!isMounted) return
+
+        if (!session?.user) {
+          setUser(null)
+          return
+        }
+
+        const currentUser = await loadUserFromAuthUser(session.user)
+
+        if (!isMounted) return
+        setUser(currentUser)
+      } catch (error) {
+        logger.error('Error bootstrapping auth session', error)
+        if (isMounted) {
+          setUser(null)
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
       }
-    })
+    }
+
+    const handleAuthSessionChange = async (authUser: SupabaseAuthUser | null) => {
+      if (!isMounted) return
+
+      setLoading(true)
+
+      try {
+        if (!authUser) {
+          setUser(null)
+          return
+        }
+
+        const currentUser = await loadUserFromAuthUser(authUser)
+
+        if (!isMounted) return
+        setUser(currentUser)
+      } catch (error) {
+        logger.error('Error handling auth state change', error)
+        if (isMounted) {
+          setUser(null)
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void bootstrapAuth()
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      if (session?.user) {
-        fetchProfile(session.user.id).then((u) => {
-          setUser(u)
-          setLoading(false)
-        })
-      } else {
-        setUser(null)
-        setLoading(false)
-      }
+      void handleAuthSessionChange(session?.user ?? null)
     })
 
-    // Não carregar todos os usuários na inicialização (otimização de performance)
-    // fetchAllUsers() removido - será carregado apenas quando necessário
-
-    return () => subscription.unsubscribe()
-  }, [fetchProfile])
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [loadUserFromAuthUser])
 
   const login = useCallback(
     async (email: string, password: string): Promise<{ error: any }> => {
@@ -241,37 +380,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           email,
           password,
         })
+
         if (error) {
           logger.error('Login failed', error)
           let message = error.message
-          // Map specific error for invalid credentials
+
           if (error.message === 'Invalid login credentials') {
             message = 'Email ou senha inválidos. Por favor, tente novamente.'
           }
+
           return { error: { message } }
         }
-        
-        // Se login foi bem-sucedido, buscar o perfil imediatamente para atualizar o estado
-        // Isso garante que o user seja atualizado rapidamente e o useEffect em Auth.tsx
-        // possa fazer o redirecionamento
+
         if (data.session?.user) {
-          const profile = await fetchProfile(data.session.user.id)
-          if (profile) {
-            setUser(profile)
-            setLoading(false)
-          }
+          setLoading(true)
+          const profile = await loadUserFromAuthUser(data.session.user)
+          setUser(profile)
+          setLoading(false)
         }
-        
+
         toast.success('Login realizado com sucesso!')
         return { error: null }
       } catch (err: any) {
         logger.error('Unexpected error during login', err)
+        setLoading(false)
         return {
           error: { message: 'Ocorreu um erro inesperado. Tente novamente.' },
         }
       }
     },
-    [fetchProfile],
+    [loadUserFromAuthUser],
   )
 
   const register = useCallback(
@@ -293,7 +431,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               role: data.role,
               avatar_url: data.avatar,
               bio: data.bio,
-              status: 'active', // Explicitly send status
+              status: 'active',
             },
           },
         })
@@ -303,7 +441,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           let message =
             'Falha no registro. Por favor, revise seus detalhes e tente novamente.'
 
-          // Map specific errors
           if (
             error.message?.includes('User already registered') ||
             error.message?.includes('already registered') ||
@@ -326,87 +463,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           }
 
           return { data: authData, error: { message } }
-        } else {
-          logger.info('User registered successfully', {
-            userId: authData.user?.id,
-          })
-
-          if (authData.session) {
-            toast.success('Conta criada com sucesso!')
-            
-            // Se há sessão imediata, buscar o perfil para atualizar o estado
-            // Se o perfil não existir (trigger falhou), criar manualmente
-            if (authData.user) {
-              let profile = await fetchProfile(authData.user.id)
-              
-              // Se o perfil não existe, criar manualmente
-              if (!profile) {
-                logger.warn('Profile not found after registration, creating manually', {
-                  userId: authData.user.id,
-                })
-                
-                try {
-                  // Criar perfil manualmente
-                  // Extrair username do email se não fornecido
-                  const usernameFromEmail = email.split('@')[0] || 'user'
-                  const { error: profileError } = await supabase
-                    .from('profiles')
-                    .insert({
-                      id: authData.user.id,
-                      username: data.username || usernameFromEmail,
-                      full_name: data.name || '',
-                      avatar_url: data.avatar || '',
-                      email: email,
-                      role: data.role || 'subscriber',
-                      bio: data.bio || '',
-                      metadata: {},
-                      status: 'active',
-                    })
-                  
-                  if (profileError) {
-                    logger.error('Failed to create profile manually', profileError)
-                    toast.error('Conta criada, mas houve um problema ao criar o perfil. Tente fazer login novamente.')
-                  } else {
-                    // Buscar o perfil recém-criado
-                    profile = await fetchProfile(authData.user.id)
-                  }
-                } catch (err) {
-                  logger.error('Error creating profile manually', err)
-                }
-              }
-              
-              if (profile) {
-                setUser(profile)
-                setLoading(false)
-              }
-            }
-
-            // Trigger welcome email
-            supabase.functions
-              .invoke('send-welcome-email', {
-                body: {
-                  email: email,
-                  name: data.name || data.username || 'User',
-                  username: data.username || 'user',
-                },
-              })
-              .then(({ error }) => {
-                if (error) {
-                  logger.error('Failed to send welcome email', error)
-                } else {
-                  logger.info('Welcome email trigger sent successfully')
-                }
-              })
-          } else {
-            toast.success('Conta criada! Verifique seu email para confirmar.')
-            logger.info(
-              'Registration successful, waiting for email verification',
-            )
-          }
-          return { data: authData, error: null }
         }
+
+        logger.info('User registered successfully', {
+          userId: authData.user?.id,
+        })
+
+        if (authData.session && authData.user) {
+          toast.success('Conta criada com sucesso!')
+          setLoading(true)
+          const profile = await loadUserFromAuthUser(authData.user, data)
+          setUser(profile)
+          setLoading(false)
+
+          supabase.functions
+            .invoke('send-welcome-email', {
+              body: {
+                email,
+                name: data.name || data.username || 'User',
+                username: data.username || 'user',
+              },
+            })
+            .then(({ error: emailError }) => {
+              if (emailError) {
+                logger.error('Failed to send welcome email', emailError)
+              } else {
+                logger.info('Welcome email trigger sent successfully')
+              }
+            })
+        } else {
+          toast.success('Conta criada! Verifique seu email para confirmar.')
+          logger.info('Registration successful, waiting for email verification')
+        }
+
+        return { data: authData, error: null }
       } catch (err) {
         logger.error('Unexpected error during registration', err)
+        setLoading(false)
         return {
           error: {
             message:
@@ -415,7 +508,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
     },
-    [],
+    [loadUserFromAuthUser],
   )
 
   const logout = useCallback(async () => {
@@ -432,38 +525,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     async (data: Partial<User>) => {
       if (!user) return { error: 'No user' }
 
-      const updates: any = {}
+      const currentProfile = await profileService.getProfile(user.id)
+      const currentMetadata = normalizeProfileMetadata(currentProfile?.metadata)
+      const nextMetadata: ProfileMetadata = { ...currentMetadata }
+
+      if (data.socialLinks !== undefined) nextMetadata.socialLinks = data.socialLinks
+      if (data.preferences !== undefined) nextMetadata.preferences = data.preferences
+      if (data.notificationPreferences !== undefined) {
+        nextMetadata.notificationPreferences = data.notificationPreferences
+      }
+      if (data.subscriptionStatus !== undefined) {
+        nextMetadata.subscriptionStatus = data.subscriptionStatus
+      }
+      if (data.plan !== undefined) nextMetadata.plan = data.plan
+      if (data.status !== undefined) nextMetadata.status = data.status
+      if (data.points !== undefined) nextMetadata.points = data.points
+      if (data.badges !== undefined) nextMetadata.badges = data.badges
+
+      const updates: ProfileUpdate = {}
       if (data.full_name !== undefined) updates.full_name = data.full_name
       if (data.username !== undefined) updates.username = data.username
       if (data.bio !== undefined) updates.bio = data.bio
       if (data.avatar !== undefined) updates.avatar_url = data.avatar
       if (data.status !== undefined) updates.status = data.status
-
-      const metadataUpdates: any = {}
-      if (data.socialLinks) metadataUpdates.socialLinks = data.socialLinks
-      if (data.preferences) metadataUpdates.preferences = data.preferences
-      if (data.notificationPreferences)
-        metadataUpdates.notificationPreferences = data.notificationPreferences
-      if (data.subscriptionStatus)
-        metadataUpdates.subscriptionStatus = data.subscriptionStatus
-      if (data.plan) metadataUpdates.plan = data.plan
-      if (data.points !== undefined) metadataUpdates.points = data.points
-      if (data.badges) metadataUpdates.badges = data.badges
-
-      if (Object.keys(metadataUpdates).length > 0) {
-        updates.metadata = {
-          socialLinks: data.socialLinks || user.socialLinks,
-          preferences: data.preferences || user.preferences,
-          notificationPreferences:
-            data.notificationPreferences || user.notificationPreferences,
-          subscriptionStatus:
-            data.subscriptionStatus || user.subscriptionStatus,
-          plan: data.plan || user.plan,
-          status: data.status || user.status,
-          points: data.points !== undefined ? data.points : user.points,
-          badges: data.badges || user.badges,
-        }
-      }
+      if (Object.keys(nextMetadata).length > 0) updates.metadata = nextMetadata
 
       try {
         await profileService.updateProfile(user.id, updates)
@@ -477,8 +562,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setAllUsers((prev) =>
           prev.map((u) => (u.id === user.id ? updatedUser : u)),
         )
-        if (!data.points && !data.notificationPreferences)
+
+        if (!data.points && !data.notificationPreferences) {
           toast.success('Perfil atualizado!')
+        }
+
         return { error: null }
       } catch (error: any) {
         toast.error('Erro ao atualizar perfil: ' + error.message)
@@ -507,7 +595,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         await profileService.updateProfile(id, {
           status: newStatus,
-          metadata: { ...targetUser, status: newStatus },
+          metadata: {
+            status: newStatus,
+          },
         })
 
         setAllUsers((prev) =>
