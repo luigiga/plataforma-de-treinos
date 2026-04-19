@@ -2,16 +2,21 @@ import { supabase } from '@/lib/supabase/client'
 import { logger } from '@/lib/logger'
 import { Database } from '@/lib/supabase/types'
 
-// Extend the type to include the new status column which might not be in types.ts yet
-type Profile = Database['public']['Tables']['profiles']['Row'] & {
+export type Profile = Database['public']['Tables']['profiles']['Row']
+export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
+export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+
+type ProfileFilters = {
+  page?: number
+  pageSize?: number
+  role?: string
   status?: string
+  search?: string
 }
 
 export const profileService = {
-  async getProfile(userId: string) {
+  async getProfile(userId: string): Promise<Profile | null> {
     try {
-      // Usar maybeSingle() em vez de single() para evitar erro se não existir
-      // Especificar campos explicitamente para evitar problemas com select=*
       const { data, error } = await supabase
         .from('profiles')
         .select(
@@ -26,22 +31,14 @@ export const profileService = {
           userId,
           code: error.code,
           message: error.message,
-          status: (error as any).status,
-          details: (error as any).details,
-          hint: (error as any).hint,
         })
 
-        // Se for erro 406 (Not Acceptable), pode ser problema com o formato da resposta
-        // Tentar uma abordagem diferente usando limit(1) em vez de maybeSingle
-        if (
-          error.code === 'PGRST116' ||
-          (error as any).status === 406 ||
-          error.message?.includes('406')
-        ) {
-          logger.warn('Received 406 error, trying alternative query', userId)
+        if (error.code === 'PGRST116' || error.message?.includes('406')) {
+          logger.warn('Received maybeSingle fallback scenario, trying limit(1)', {
+            userId,
+          })
 
-          // Tentar com limit(1) em vez de maybeSingle
-          const { data: altData, error: altError } = await supabase
+          const { data: fallbackData, error: fallbackError } = await supabase
             .from('profiles')
             .select(
               'id, username, full_name, avatar_url, email, role, bio, metadata, status, created_at',
@@ -49,90 +46,81 @@ export const profileService = {
             .eq('id', userId)
             .limit(1)
 
-          if (altError) {
-            logger.error('Alternative query also failed', altError)
+          if (fallbackError) {
+            logger.error('Fallback profile query also failed', fallbackError)
             return null
           }
 
-          return altData && altData.length > 0 ? (altData[0] as Profile) : null
+          return fallbackData?.[0] || null
         }
 
         return null
       }
 
-      // Se não encontrou o perfil, pode ser que ainda não foi criado
       if (!data) {
         logger.warn('Profile not found for user', userId)
         return null
       }
 
-      return data as Profile
+      return data
     } catch (error) {
       logger.error('Unexpected error fetching profile', error)
       return null
     }
   },
 
-  /**
-   * Get all profiles (legacy method - mantido para compatibilidade)
-   * @deprecated Use getAllProfilesPaginated for better performance
-   */
-  async getAllProfiles() {
+  async getAllProfiles(): Promise<Profile[]> {
     const result = await this.getAllProfilesPaginated({ page: 1, pageSize: 1000 })
     return result.data
   },
 
-  /**
-   * Get all profiles with pagination (NOVO - otimizado)
-   */
-  async getAllProfilesPaginated(params: { page?: number; pageSize?: number; role?: string; status?: string; search?: string } = {}) {
+  async getAllProfilesPaginated(params: ProfileFilters = {}) {
     const page = params.page || 1
     const pageSize = params.pageSize || 50
     const offset = (page - 1) * pageSize
 
     try {
-      // Build query
       let countQuery = supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-      
+
       let dataQuery = supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, email, role, bio, metadata, status, created_at')
+        .select(
+          'id, username, full_name, avatar_url, email, role, bio, metadata, status, created_at',
+        )
         .order('created_at', { ascending: false })
 
-      // Apply filters
       if (params.role) {
         countQuery = countQuery.eq('role', params.role)
         dataQuery = dataQuery.eq('role', params.role)
       }
+
       if (params.status) {
         countQuery = countQuery.eq('status', params.status)
         dataQuery = dataQuery.eq('status', params.status)
       }
+
       if (params.search) {
         const searchFilter = `username.ilike.%${params.search}%,full_name.ilike.%${params.search}%,email.ilike.%${params.search}%`
         countQuery = countQuery.or(searchFilter)
         dataQuery = dataQuery.or(searchFilter)
       }
 
-      // Get count
       const { count, error: countError } = await countQuery
       if (countError) {
         logger.error('Error counting profiles', countError)
         throw countError
       }
 
-      // Get paginated data
       const { data, error } = await dataQuery.range(offset, offset + pageSize - 1)
-
       if (error) {
         logger.error('Error fetching all profiles', error)
         throw error
       }
 
       return {
-        data: (data || []) as Profile[],
+        data: data || [],
         total: count || 0,
         page,
         pageSize,
@@ -141,7 +129,7 @@ export const profileService = {
     } catch (error) {
       logger.error('Unexpected error fetching all profiles', error)
       return {
-        data: [],
+        data: [] as Profile[],
         total: 0,
         page: 1,
         pageSize,
@@ -150,7 +138,7 @@ export const profileService = {
     }
   },
 
-  async updateProfile(userId: string, updates: any) {
+  async updateProfile(userId: string, updates: ProfileUpdate) {
     try {
       const { error } = await supabase
         .from('profiles')
@@ -163,6 +151,20 @@ export const profileService = {
       }
     } catch (error) {
       logger.error('Unexpected error updating profile', error)
+      throw error
+    }
+  },
+
+  async createProfile(payload: ProfileInsert) {
+    try {
+      const { error } = await supabase.from('profiles').insert(payload)
+
+      if (error) {
+        logger.error('Error creating profile', error)
+        throw error
+      }
+    } catch (error) {
+      logger.error('Unexpected error creating profile', error)
       throw error
     }
   },
