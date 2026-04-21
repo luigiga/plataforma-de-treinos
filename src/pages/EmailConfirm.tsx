@@ -1,78 +1,151 @@
-import { useEffect, useState } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabase/client'
-import { useAuth } from '@/context/AuthContext'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { supabase } from '@/lib/supabase/client'
+import { useAuth } from '@/context/AuthContext'
 import { logger } from '@/lib/logger'
 
-/**
- * Página para processar confirmação de email
- * Esta página será usada quando a confirmação de email estiver habilitada em produção
- * O Supabase redireciona para esta página após o usuário clicar no link de confirmação
- */
+type ConfirmStatus = 'loading' | 'success' | 'error'
+type RedirectRole = 'subscriber' | 'trainer' | 'admin'
+type VerifyType = 'signup' | 'magiclink' | 'recovery' | 'invite' | 'email_change' | 'email'
+
+function isRedirectRole(value: unknown): value is RedirectRole {
+  return value === 'subscriber' || value === 'trainer' || value === 'admin'
+}
+
+function isVerifyType(value: string | null): value is VerifyType {
+  return (
+    value === 'signup' ||
+    value === 'magiclink' ||
+    value === 'recovery' ||
+    value === 'invite' ||
+    value === 'email_change' ||
+    value === 'email'
+  )
+}
+
+function getDefaultDashboardPath(role?: RedirectRole | null) {
+  switch (role) {
+    case 'admin':
+      return '/admin-dashboard'
+    case 'trainer':
+      return '/trainer-dashboard'
+    case 'subscriber':
+    default:
+      return '/dashboard'
+  }
+}
+
+function getRoleFromSession(session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) {
+  const metadataRole = session?.user?.user_metadata?.role
+  return isRedirectRole(metadataRole) ? metadataRole : 'subscriber'
+}
+
 export default function EmailConfirm() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [status, setStatus] = useState<ConfirmStatus>('loading')
   const [message, setMessage] = useState('Verificando confirmação de email...')
 
+  const hashParams = useMemo(() => {
+    const rawHash = window.location.hash.startsWith('#')
+      ? window.location.hash.slice(1)
+      : window.location.hash
+
+    return new URLSearchParams(rawHash)
+  }, [])
+
   useEffect(() => {
+    let isMounted = true
+    let redirectTimeout: ReturnType<typeof setTimeout> | null = null
+
+    const redirectAfterSuccess = (role?: RedirectRole | null, delayMs = 1200) => {
+      redirectTimeout = setTimeout(() => {
+        navigate(getDefaultDashboardPath(role), { replace: true })
+      }, delayMs)
+    }
+
+    const redirectToLogin = (delayMs = 1800) => {
+      redirectTimeout = setTimeout(() => {
+        navigate('/auth?tab=login', { replace: true })
+      }, delayMs)
+    }
+
     const handleEmailConfirmation = async () => {
       try {
-        // O Supabase adiciona os tokens na URL como query params
-        const token = searchParams.get('token')
-        const type = searchParams.get('type')
+        const code = searchParams.get('code')
+        const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash')
+        const typeParam = searchParams.get('type') || hashParams.get('type')
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
 
-        if (!token || type !== 'signup') {
-          setStatus('error')
-          setMessage('Link de confirmação inválido ou expirado.')
+        let currentSession: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session'] = null
+
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          if (error) throw error
+          currentSession = data.session
+        } else if (tokenHash && isVerifyType(typeParam)) {
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: typeParam,
+          })
+          if (error) throw error
+          currentSession = data.session
+        } else if (accessToken && refreshToken) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+          if (error) throw error
+          currentSession = data.session
+        } else {
+          const { data, error } = await supabase.auth.getSession()
+          if (error) throw error
+          currentSession = data.session
+        }
+
+        if (!isMounted) return
+
+        if (currentSession?.user) {
+          const role = user?.role || getRoleFromSession(currentSession)
+          setStatus('success')
+          setMessage('Email confirmado com sucesso! Redirecionando...')
+          redirectAfterSuccess(role)
           return
         }
 
-        // Verificar a sessão atual
-        const { data: { session }, error } = await supabase.auth.getSession()
-
-        if (error) {
-          throw error
-        }
-
-        // Se já está autenticado, redirecionar
-        if (session?.user) {
-          setStatus('success')
-          setMessage('Email confirmado com sucesso! Redirecionando...')
-          
-          // Redirecionar após 1 segundo
-          setTimeout(() => {
-            if (user?.role === 'admin') {
-              navigate('/admin-dashboard')
-            } else if (user?.role === 'trainer') {
-              navigate('/trainer-dashboard')
-            } else {
-              navigate('/dashboard')
-            }
-          }, 1000)
-        } else {
-          // Se não está autenticado, tentar fazer login com o token
-          // O Supabase geralmente faz isso automaticamente, mas podemos verificar
-          setStatus('success')
-          setMessage('Email confirmado! Faça login para continuar.')
-          
-          setTimeout(() => {
-            navigate('/auth?tab=login')
-          }, 2000)
-        }
+        setStatus('success')
+        setMessage('Email confirmado! Faça login para continuar.')
+        redirectToLogin()
       } catch (error: any) {
         logger.error('Error confirming email', error)
+
+        if (!isMounted) return
+
         setStatus('error')
-        setMessage(error.message || 'Erro ao confirmar email. Tente novamente.')
+        setMessage(error?.message || 'Erro ao confirmar email. Tente novamente.')
       }
     }
 
-    handleEmailConfirmation()
-  }, [searchParams, navigate, user])
+    void handleEmailConfirmation()
+
+    return () => {
+      isMounted = false
+      if (redirectTimeout) {
+        clearTimeout(redirectTimeout)
+      }
+    }
+  }, [hashParams, navigate, searchParams, user])
 
   return (
     <div className="container mx-auto flex items-center justify-center min-h-[calc(100vh-140px)] py-6 md:py-10 px-4">
@@ -110,7 +183,10 @@ export default function EmailConfirm() {
               <XCircle className="h-12 w-12 text-destructive" />
               <p className="text-center text-destructive">{message}</p>
               <div className="flex gap-2 mt-4">
-                <Button variant="outline" onClick={() => navigate('/auth?tab=register')}>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/auth?tab=register')}
+                >
                   Criar Nova Conta
                 </Button>
                 <Button onClick={() => navigate('/auth?tab=login')}>
@@ -124,4 +200,3 @@ export default function EmailConfirm() {
     </div>
   )
 }
-
