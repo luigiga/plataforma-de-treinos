@@ -112,6 +112,14 @@ function getAuthMetadata(user: SupabaseAuthUser): Record<string, unknown> {
   return isRecord(user.user_metadata) ? user.user_metadata : {}
 }
 
+function getEmailConfirmationRedirectUrl() {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  return `${window.location.origin}/auth/confirm`
+}
+
 function mapProfileToUser(profile: Profile): User {
   const metadata = normalizeProfileMetadata(profile.metadata)
   const profileRole = isUserRole(profile.role) ? profile.role : 'subscriber'
@@ -412,10 +420,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           role: data.role,
         })
 
+        const emailRedirectTo = getEmailConfirmationRedirectUrl()
+
         const { data: authData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            emailRedirectTo,
             data: {
               username: data.username,
               full_name: data.name,
