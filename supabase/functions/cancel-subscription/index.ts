@@ -1,14 +1,38 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
+const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '*'
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': allowedOrigin,
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type',
 }
 
 interface CancelSubscriptionRequest {
   subscriptionId: string
+}
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    status,
+  })
+}
+
+function getRequiredEnv(name: string) {
+  const value = Deno.env.get(name)
+  if (!value) {
+    throw new Error(`Missing environment variable: ${name}`)
+  }
+  return value
+}
+
+function getBearerToken(req: Request) {
+  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    throw new Error('Missing bearer token')
+  }
+  return authHeader.replace('Bearer ', '').trim()
 }
 
 export const onRequest = async (req: Request) => {
@@ -23,18 +47,30 @@ export const onRequest = async (req: Request) => {
       throw new Error('Missing required field: subscriptionId')
     }
 
-    // Inicializar Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')!
-
-    if (!supabaseUrl || !supabaseServiceKey || !stripeSecretKey) {
-      throw new Error('Missing environment variables')
-    }
+    const supabaseUrl = getRequiredEnv('SUPABASE_URL')
+    const supabaseServiceKey = getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY')
+    const stripeSecretKey = getRequiredEnv('STRIPE_SECRET_KEY')
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const token = getBearerToken(req)
 
-    // Buscar subscription no banco
+    const {
+      data: { user: authUser },
+      error: authError,
+    } = await supabase.auth.getUser(token)
+
+    if (authError || !authUser) {
+      return jsonResponse({ error: 'Unauthorized' }, 401)
+    }
+
+    const { data: requesterProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', authUser.id)
+      .single()
+
+    const requesterRole = requesterProfile?.role || 'subscriber'
+
     const { data: subscription, error: subscriptionError } = await supabase
       .from('payment_subscriptions')
       .select('*')
@@ -45,27 +81,30 @@ export const onRequest = async (req: Request) => {
       throw new Error('Subscription not found')
     }
 
-    if (subscription.status === 'canceled') {
-      return new Response(
-        JSON.stringify({ message: 'Subscription already canceled' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        },
-      )
+    const canCancel =
+      subscription.user_id === authUser.id || requesterRole === 'admin'
+
+    if (!canCancel) {
+      return jsonResponse({ error: 'Forbidden' }, 403)
     }
 
-    // Cancelar subscription no Stripe
+    if (subscription.cancel_at_period_end || subscription.status === 'canceled') {
+      return jsonResponse({
+        message: 'Subscription already scheduled for cancellation',
+        cancelAtPeriodEnd: true,
+      })
+    }
+
     const cancelResponse = await fetch(
       `https://api.stripe.com/v1/subscriptions/${subscription.stripe_subscription_id}`,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${stripeSecretKey}`,
+          Authorization: `Bearer ${stripeSecretKey}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          cancel_at_period_end: 'true', // Cancelar no final do período atual
+          cancel_at_period_end: 'true',
         }),
       },
     )
@@ -77,16 +116,14 @@ export const onRequest = async (req: Request) => {
 
     const canceledSubscription = await cancelResponse.json()
 
-    // Atualizar subscription no banco
     const { error: updateError } = await supabase
       .from('payment_subscriptions')
       .update({
-        status: 'canceled',
         cancel_at_period_end: true,
-        canceled_at: new Date().toISOString(),
         current_period_end: new Date(
           canceledSubscription.current_period_end * 1000,
         ).toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', subscriptionId)
 
@@ -95,23 +132,13 @@ export const onRequest = async (req: Request) => {
       throw new Error('Failed to update subscription record')
     }
 
-    return new Response(
-      JSON.stringify({
-        message: 'Subscription canceled successfully',
-        cancelAtPeriodEnd: true,
-        currentPeriodEnd: canceledSubscription.current_period_end,
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
-    )
+    return jsonResponse({
+      message: 'Subscription scheduled for cancellation',
+      cancelAtPeriodEnd: true,
+      currentPeriodEnd: canceledSubscription.current_period_end,
+    })
   } catch (error: any) {
     console.error('[ERROR] Failed to cancel subscription:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
-    })
+    return jsonResponse({ error: error.message }, 400)
   }
 }
-
