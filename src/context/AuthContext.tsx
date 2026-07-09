@@ -583,7 +583,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await profileService.deleteProfile(id)
       setAllUsers((prev) => prev.filter((u) => u.id !== id))
       toast.success('Usuário excluído com sucesso.')
-    } catch (error) {
+    } catch (_error) {
       toast.error('Erro ao excluir usuário')
     }
   }, [])
@@ -613,7 +613,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         toast.success(
           `Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'}.`,
         )
-      } catch (error) {
+      } catch (_error) {
         toast.error('Erro ao atualizar status')
       }
     },

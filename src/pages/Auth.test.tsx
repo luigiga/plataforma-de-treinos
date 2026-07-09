@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import Auth from './Auth'
 
-const useAuthMock = vi.fn()
-const toastErrorMock = vi.fn()
-const toastInfoMock = vi.fn()
+const { useAuthMock, toastErrorMock, toastInfoMock } = vi.hoisted(() => ({
+  useAuthMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+  toastInfoMock: vi.fn(),
+}))
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
@@ -64,6 +67,7 @@ describe('Auth page', () => {
   })
 
   it('preserves redirect and role params when switching tabs', async () => {
+    const user = userEvent.setup()
     useAuthMock.mockReturnValue({
       user: null,
       login: vi.fn(),
@@ -79,7 +83,7 @@ describe('Auth page', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Cadastrar' }))
+    await user.click(screen.getByRole('tab', { name: 'Cadastrar' }))
 
     await waitFor(() => {
       expect(

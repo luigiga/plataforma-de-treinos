@@ -212,7 +212,6 @@ export default function Auth() {
         </CardHeader>
         <CardContent>
           <Tabs
-            defaultValue={activeTab}
             value={activeTab}
             onValueChange={handleTabChange}
             className="w-full"

@@ -141,7 +141,7 @@ export default function CreateEditWorkout() {
       }
 
       navigate('/trainer-dashboard')
-    } catch (error) {
+    } catch (_error) {
       // Error handling já está no contexto
     } finally {
       setIsSubmitting(false)
