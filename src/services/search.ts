@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
+import { USE_MOCKS } from '@/lib/config'
+import { mockStore } from '@/mocks/store'
 
 export interface SearchResult {
   id: string
@@ -12,6 +14,10 @@ export interface SearchResult {
 export const searchService = {
   async searchGlobal(query: string): Promise<SearchResult[]> {
     if (!query || query.length < 2) return []
+
+    if (USE_MOCKS) {
+      return mockStore.searchGlobal(query)
+    }
 
     const results: SearchResult[] = []
 

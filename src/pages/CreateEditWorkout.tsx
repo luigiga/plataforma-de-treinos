@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { useData } from '@/context/DataContext'
 import { useAuth } from '@/context/AuthContext'
+import { getDefaultDashboardPath } from '@/lib/auth-routing'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -71,7 +72,7 @@ export default function CreateEditWorkout() {
       return
     }
     if (user.role !== 'trainer' && user.role !== 'admin') {
-      navigate('/dashboard')
+      navigate(getDefaultDashboardPath(user.role))
       return
     }
     // Se está editando, verificar se o workout pertence ao trainer
@@ -126,9 +127,14 @@ export default function CreateEditWorkout() {
   const onSubmit = async (data: z.infer<typeof workoutSchema>) => {
     setIsSubmitting(true)
     try {
+      if (!user?.id) {
+        navigate('/auth?tab=login')
+        return
+      }
+
       const workoutData = {
         ...data,
-        trainerId: user?.id || '101',
+        trainerId: user.id,
         category: ['Geral'],
         status: 'published' as const,
         exercises: data.exercises.map((e, i) => ({ ...e, id: `new-${i}` })),
@@ -140,7 +146,9 @@ export default function CreateEditWorkout() {
         await addWorkout(workoutData)
       }
 
-      navigate('/trainer-dashboard')
+      navigate(
+        user.role === 'admin' ? '/admin-dashboard' : '/trainer-dashboard',
+      )
     } catch (_error) {
       // Error handling já está no contexto
     } finally {

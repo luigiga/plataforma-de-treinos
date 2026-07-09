@@ -44,6 +44,7 @@ import { ShareProfileDialog } from '@/components/ShareProfileDialog'
 import { useDebounce } from '@/hooks/use-debounce'
 import { NotificationSettings } from '@/components/NotificationSettings'
 import { logger } from '@/lib/logger'
+import { USE_MOCKS } from '@/lib/config'
 
 const profileSchema = z.object({
   username: z
@@ -175,10 +176,19 @@ export default function Profile() {
       }
 
       const file = e.target.files[0]
+
+      // Em mock, usamos blob URL local (sem Supabase Storage).
+      if (USE_MOCKS) {
+        const localUrl = URL.createObjectURL(file)
+        setAvatarPreview(localUrl)
+        await updateUser({ avatar: localUrl })
+        toast.success('Foto de perfil atualizada (mock)!')
+        return
+      }
+
       const fileExt = file.name.split('.').pop()
       const fileName = `${user.id}/${Date.now()}.${fileExt}`
 
-      // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, { upsert: true })
@@ -187,16 +197,12 @@ export default function Profile() {
         throw uploadError
       }
 
-      // Get Public URL
       const {
         data: { publicUrl },
       } = supabase.storage.from('avatars').getPublicUrl(fileName)
 
       setAvatarPreview(publicUrl)
-
-      // Update profile immediately
       await updateUser({ avatar: publicUrl })
-
       toast.success('Foto de perfil atualizada!')
     } catch (error: any) {
       toast.error('Erro no upload: ' + error.message)
@@ -209,8 +215,7 @@ export default function Profile() {
     try {
       setUploading(true)
 
-      // Try to delete from storage if we can parse the path
-      if (user.avatar) {
+      if (!USE_MOCKS && user.avatar) {
         const urlParts = user.avatar.split('/avatars/')
         if (urlParts.length > 1) {
           const path = urlParts[1]

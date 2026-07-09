@@ -136,7 +136,7 @@ interface DataContextType {
   searchUsers: (query: string) => Promise<PublicUser[]>
 }
 
-const DataContext = createContext<DataContextType | undefined>(undefined)
+export const DataContext = createContext<DataContextType | undefined>(undefined)
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
   children,

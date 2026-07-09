@@ -29,6 +29,12 @@ vi.mock('@/lib/logger', () => ({
   },
 }))
 
+vi.mock('@/lib/config', () => ({
+  USE_MOCKS: false,
+  PAYMENTS_ENABLED: false,
+  HAS_SUPABASE: true,
+}))
+
 vi.mock('@/lib/supabase/client', () => ({
   supabase: {
     auth: {

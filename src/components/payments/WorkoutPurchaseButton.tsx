@@ -6,6 +6,7 @@ import { Loader2, ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import { PAYMENTS_ENABLED, USE_MOCKS } from '@/lib/config'
 
 interface WorkoutPurchaseButtonProps {
   workoutId: string
@@ -43,6 +44,14 @@ export function WorkoutPurchaseButton({
     toast.success('Treino comprado com sucesso! Agora você tem acesso completo.')
     // Recarregar a página para atualizar o acesso
     window.location.reload()
+  }
+
+  if (USE_MOCKS || !PAYMENTS_ENABLED) {
+    return (
+      <Button size="lg" className="w-full" variant="secondary" disabled>
+        Pagamentos desabilitados no modo mock
+      </Button>
+    )
   }
 
   if (isLoading) {

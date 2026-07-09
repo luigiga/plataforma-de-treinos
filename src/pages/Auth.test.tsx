@@ -53,16 +53,46 @@ describe('Auth page', () => {
     })
 
     render(
-      <MemoryRouter initialEntries={['/auth?tab=login&redirect=%2Fprogress']}>
+      <MemoryRouter initialEntries={['/auth?tab=login&redirect=%2Fprofile']}>
         <Routes>
-          <Route path="/progress" element={<LocationEcho />} />
+          <Route path="/profile" element={<LocationEcho />} />
           <Route path="/auth" element={<><LocationEcho /><Auth /></>} />
         </Routes>
       </MemoryRouter>,
     )
 
     await waitFor(() => {
-      expect(screen.getByText('loc:/progress')).toBeInTheDocument()
+      expect(screen.getByText('loc:/profile')).toBeInTheDocument()
+    })
+  })
+
+  it('ignores role-incompatible redirect and uses role dashboard', async () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: '3',
+        username: 'admin',
+        full_name: 'Admin',
+        name: 'Admin',
+        email: 'admin@example.com',
+        role: 'admin',
+      },
+      login: vi.fn(),
+      register: vi.fn(),
+      checkUsernameAvailability: vi.fn().mockResolvedValue(true),
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/auth?tab=login&redirect=%2Fdashboard']}>
+        <Routes>
+          <Route path="/admin-dashboard" element={<LocationEcho />} />
+          <Route path="/dashboard" element={<LocationEcho />} />
+          <Route path="/auth" element={<><LocationEcho /><Auth /></>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('loc:/admin-dashboard')).toBeInTheDocument()
     })
   })
 

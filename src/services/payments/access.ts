@@ -1,6 +1,7 @@
 import { subscriptionService } from './subscriptions'
 import { transactionService } from './transactions'
 import { logger } from '@/lib/logger'
+import { USE_MOCKS } from '@/lib/config'
 
 export interface WorkoutAccess {
   hasAccess: boolean
@@ -24,6 +25,14 @@ export const accessService = {
     workoutIsPaid: boolean
   ): Promise<WorkoutAccess> {
     try {
+      // Em modo mock liberamos acesso para validar a UI sem Stripe/Supabase.
+      if (USE_MOCKS) {
+        if (userId === workoutTrainerId) {
+          return { hasAccess: true, reason: 'owner' }
+        }
+        return { hasAccess: true, reason: 'free' }
+      }
+
       // Se o workout é gratuito, todos têm acesso
       if (!workoutIsPaid || workoutPurchaseType === 'free') {
         return {

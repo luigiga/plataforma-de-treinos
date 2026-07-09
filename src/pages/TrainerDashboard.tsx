@@ -18,7 +18,7 @@ export default function TrainerDashboard() {
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
 
-  const trainerId = user?.id === '1' ? '101' : user?.id || ''
+  const trainerId = user?.id || ''
   const { data: workoutsData, isLoading } = useTrainerWorkouts(trainerId, {
     page: currentPage,
     pageSize,

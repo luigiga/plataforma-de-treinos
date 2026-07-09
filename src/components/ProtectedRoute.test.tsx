@@ -89,6 +89,42 @@ describe('ProtectedRoute', () => {
     expect(screen.getByText('trainer:/trainer-dashboard')).toBeInTheDocument()
   })
 
+  it('sends admin to admin dashboard even with subscriber redirect param', () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: '3',
+        username: 'admin',
+        full_name: 'Admin',
+        name: 'Admin',
+        email: 'a@example.com',
+        role: 'admin',
+      },
+      loading: false,
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/auth?tab=login&redirect=%2Fdashboard']}>
+        <Routes>
+          <Route
+            path="/auth"
+            element={
+              <ProtectedRoute redirectIfAuthenticated>
+                <div>auth form</div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin-dashboard"
+            element={<LocationEcho label="admin" />}
+          />
+          <Route path="/dashboard" element={<LocationEcho label="sub" />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('admin:/admin-dashboard')).toBeInTheDocument()
+  })
+
   it('redirects unauthorized users and shows toast', async () => {
     useAuthMock.mockReturnValue({
       user: { id: '2', username: 'sub', full_name: 'Sub', name: 'Sub', email: 's@example.com', role: 'subscriber' },

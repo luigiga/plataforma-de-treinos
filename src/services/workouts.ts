@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase/client'
 import { logger } from '@/lib/logger'
 import { Workout, Review } from '@/context/DataContext'
+import { USE_MOCKS } from '@/lib/config'
+import { mockStore } from '@/mocks/store'
 
 // Pagination types
 export interface PaginationParams {
@@ -50,6 +52,10 @@ export const workoutService = {
    * @deprecated Use fetchWorkoutsPaginated for better performance
    */
   async fetchWorkouts(): Promise<Workout[]> {
+    if (USE_MOCKS) {
+      return mockStore.listWorkouts({ page: 1, pageSize: 1000 }).data
+    }
+
     const { data, error } = await supabase
       .from('workouts')
       .select('*, exercises(*)')
@@ -83,6 +89,10 @@ export const workoutService = {
   async fetchWorkoutsPaginated(
     params: PaginationParams = {},
   ): Promise<PaginatedResponse<Workout>> {
+    if (USE_MOCKS) {
+      return mockStore.listWorkouts(params)
+    }
+
     const page = params.page || 1
     const pageSize = params.pageSize || 20
     const offset = (page - 1) * pageSize
@@ -145,6 +155,14 @@ export const workoutService = {
     trainerId: string,
     params: PaginationParams = {},
   ): Promise<PaginatedResponse<Workout>> {
+    if (USE_MOCKS) {
+      return mockStore.listWorkouts({
+        ...params,
+        trainerId,
+        includeDrafts: true,
+      })
+    }
+
     const page = params.page || 1
     const pageSize = params.pageSize || 20
     const offset = (page - 1) * pageSize
@@ -196,6 +214,10 @@ export const workoutService = {
    * Fetch single workout by ID (otimizado)
    */
   async fetchWorkoutById(id: string): Promise<Workout | null> {
+    if (USE_MOCKS) {
+      return mockStore.getWorkoutById(id)
+    }
+
     const { data, error } = await supabase
       .from('workouts')
       .select(
@@ -228,6 +250,10 @@ export const workoutService = {
   async createWorkout(
     workout: Omit<Workout, 'id' | 'createdAt' | 'trainerName'>,
   ) {
+    if (USE_MOCKS) {
+      return mockStore.addWorkout(workout)
+    }
+
     const { data: workoutData, error: workoutError } = await supabase
       .from('workouts')
       .insert({
@@ -271,6 +297,11 @@ export const workoutService = {
   },
 
   async deleteWorkout(id: string) {
+    if (USE_MOCKS) {
+      mockStore.deleteWorkout(id)
+      return
+    }
+
     const { error } = await supabase.from('workouts').delete().eq('id', id)
     if (error) throw error
   },
@@ -280,6 +311,10 @@ export const workoutService = {
    * @deprecated Use fetchReviewsPaginated for better performance
    */
   async fetchReviews(): Promise<Review[]> {
+    if (USE_MOCKS) {
+      return mockStore.listReviews(undefined, 1, 1000).data
+    }
+
     const { data, error } = await supabase
       .from('reviews')
       .select('*')
@@ -333,6 +368,14 @@ export const workoutService = {
     workoutId?: string,
     params: PaginationParams = {},
   ): Promise<PaginatedResponse<Review>> {
+    if (USE_MOCKS) {
+      return mockStore.listReviews(
+        workoutId,
+        params.page || 1,
+        params.pageSize || 20,
+      )
+    }
+
     const page = params.page || 1
     const pageSize = params.pageSize || 20
     const offset = (page - 1) * pageSize
@@ -400,6 +443,11 @@ export const workoutService = {
   },
 
   async addReview(review: Omit<Review, 'id' | 'createdAt'>) {
+    if (USE_MOCKS) {
+      mockStore.addReview(review)
+      return
+    }
+
     const { error } = await supabase.from('reviews').insert({
       workout_id: review.workoutId,
       user_id: review.userId,

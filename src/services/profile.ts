@@ -1,6 +1,10 @@
 import { supabase } from '@/lib/supabase/client'
 import { logger } from '@/lib/logger'
 import { Database } from '@/lib/supabase/types'
+import type { User } from '@/context/AuthContext'
+import { USE_MOCKS } from '@/lib/config'
+import { mockStore } from '@/mocks/store'
+import { userToProfile } from '@/mocks/profile-mapper'
 
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
@@ -16,6 +20,11 @@ type ProfileFilters = {
 
 export const profileService = {
   async getProfile(userId: string): Promise<Profile | null> {
+    if (USE_MOCKS) {
+      const user = mockStore.getUserById(userId)
+      return user ? userToProfile(user) : null
+    }
+
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -75,6 +84,14 @@ export const profileService = {
   },
 
   async getAllProfilesPaginated(params: ProfileFilters = {}) {
+    if (USE_MOCKS) {
+      const result = mockStore.listProfiles(params)
+      return {
+        ...result,
+        data: result.data.map(userToProfile),
+      }
+    }
+
     const page = params.page || 1
     const pageSize = params.pageSize || 50
     const offset = (page - 1) * pageSize
@@ -139,6 +156,27 @@ export const profileService = {
   },
 
   async updateProfile(userId: string, updates: ProfileUpdate) {
+    if (USE_MOCKS) {
+      const metadata = (updates.metadata || {}) as Record<string, unknown>
+      mockStore.updateUser(userId, {
+        full_name: updates.full_name ?? undefined,
+        username: updates.username ?? undefined,
+        bio: updates.bio ?? undefined,
+        avatar: updates.avatar_url ?? undefined,
+        status: (updates.status as User['status']) ?? undefined,
+        socialLinks: metadata.socialLinks as User['socialLinks'],
+        preferences: metadata.preferences as User['preferences'],
+        notificationPreferences:
+          metadata.notificationPreferences as User['notificationPreferences'],
+        subscriptionStatus:
+          metadata.subscriptionStatus as User['subscriptionStatus'],
+        plan: metadata.plan as User['plan'],
+        points: metadata.points as number | undefined,
+        badges: metadata.badges as string[] | undefined,
+      })
+      return
+    }
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -156,6 +194,11 @@ export const profileService = {
   },
 
   async createProfile(payload: ProfileInsert) {
+    if (USE_MOCKS) {
+      // Cadastro mock já cria o usuário no AuthProvider.
+      return
+    }
+
     try {
       const { error } = await supabase.from('profiles').insert(payload)
 
@@ -170,6 +213,11 @@ export const profileService = {
   },
 
   async deleteProfile(userId: string) {
+    if (USE_MOCKS) {
+      mockStore.deleteUser(userId)
+      return
+    }
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -186,6 +234,10 @@ export const profileService = {
   },
 
   async checkUsernameAvailability(username: string) {
+    if (USE_MOCKS) {
+      return mockStore.isUsernameAvailable(username)
+    }
+
     try {
       const { count, error } = await supabase
         .from('profiles')

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import type { Json } from '@/lib/supabase/types'
+import { USE_MOCKS } from '@/lib/config'
 
 export type LogLevel = 'info' | 'warn' | 'error'
 
@@ -66,6 +67,18 @@ async function getCurrentUserId() {
 
 export const logService = {
   async log(level: LogLevel, message: string, data?: unknown) {
+    if (USE_MOCKS) {
+      if (import.meta.env.DEV) {
+        const payload = normalizeLogData(data)
+        console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'info'](
+          `[mock-log:${level}]`,
+          message,
+          payload,
+        )
+      }
+      return
+    }
+
     try {
       const userId = await getCurrentUserId()
 

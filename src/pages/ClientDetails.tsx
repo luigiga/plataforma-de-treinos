@@ -33,7 +33,7 @@ export default function ClientDetails() {
 
   const client = publicUsers.find((u) => u.id === id)
   const progressLogs = id ? getUserProgress(id) : []
-  const trainerId = user?.id === '1' ? '101' : user?.id || ''
+  const trainerId = user?.id || ''
   const myWorkouts = workouts.filter((w) => w.trainerId === trainerId)
 
   const clientAssignments = assignments.filter(
