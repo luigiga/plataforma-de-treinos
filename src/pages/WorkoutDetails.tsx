@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
 import { useAuth } from '@/context/AuthContext'
+import { getRoleHomePath } from '@/lib/auth-routing'
 import { OptimizedImage } from '@/components/OptimizedImage'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -57,7 +58,15 @@ export default function WorkoutDetails() {
       <Button
         variant="ghost"
         className="mb-4 pl-0 hover:pl-2 transition-all"
-        onClick={() => navigate(-1)}
+        type="button"
+        onClick={() => {
+          // navigate(-1) falha quando não há histórico (link direto / reload)
+          if (window.history.length > 1) {
+            navigate(-1)
+            return
+          }
+          navigate(getRoleHomePath(user?.role))
+        }}
       >
         <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
       </Button>

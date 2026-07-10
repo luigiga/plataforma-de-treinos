@@ -27,7 +27,9 @@ export function WorkoutPurchaseButton({
   const handlePurchaseClick = () => {
     if (!user) {
       toast.error('Você precisa estar logado para comprar este treino')
-      navigate('/auth?tab=login')
+      navigate(
+        `/auth?tab=login&redirect=${encodeURIComponent(`/workout/${workoutId}`)}`,
+      )
       return
     }
 

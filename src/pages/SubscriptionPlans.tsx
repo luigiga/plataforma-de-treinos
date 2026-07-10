@@ -73,7 +73,9 @@ export default function SubscriptionPlans() {
 
   const handlePaymentSuccess = () => {
     setSelectedProduct(null)
-    navigate('/dashboard')
+    navigate(user ? getDefaultDashboardPath(user.role) : '/dashboard', {
+      replace: true,
+    })
   }
 
   return (

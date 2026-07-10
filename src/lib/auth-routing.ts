@@ -1,15 +1,21 @@
 export type AppRole = 'subscriber' | 'trainer' | 'admin'
 
-export function getDefaultDashboardPath(role: AppRole): string {
+export function getDefaultDashboardPath(role?: AppRole | null): string {
   switch (role) {
     case 'admin':
       return '/admin-dashboard'
     case 'trainer':
       return '/trainer-dashboard'
     case 'subscriber':
-    default:
       return '/dashboard'
+    default:
+      return '/auth?tab=login'
   }
+}
+
+/** Home pós-ação (voltar/cancelar/salvar) para o role autenticado. */
+export function getRoleHomePath(role?: AppRole | null): string {
+  return getDefaultDashboardPath(role)
 }
 
 export function sanitizeRedirectPath(path?: string | null): string | null {

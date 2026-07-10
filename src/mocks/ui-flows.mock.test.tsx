@@ -181,6 +181,62 @@ describe('mock UI flows', () => {
     expect(screen.getByRole('link', { name: /Novo Treino/i })).toBeInTheDocument()
   })
 
+  it('trainer can open create workout and go back to dashboard', async () => {
+    const user = await loginAs('Trainer')
+
+    await waitFor(() => {
+      expect(screen.getByText(/Painel do Treinador/i)).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('link', { name: /Novo Treino/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Criar Novo Treino/i)).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('link', { name: /^Voltar$/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Painel do Treinador/i)).toBeInTheDocument()
+    })
+  })
+
+  it('trainer cancel on create workout returns to trainer dashboard', async () => {
+    const user = await loginAs('Trainer')
+
+    await waitFor(() => {
+      expect(screen.getByText(/Painel do Treinador/i)).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('link', { name: /Novo Treino/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /^Cancelar$/i })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('link', { name: /^Cancelar$/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Painel do Treinador/i)).toBeInTheDocument()
+    })
+  })
+
+  it('admin create-workout back redirects to admin dashboard', async () => {
+    mockStore.setSessionUserId('mock-admin-1')
+    render(<MockAppRoutes initialEntries={['/create-workout']} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Criar Novo Treino/i)).toBeInTheDocument()
+    })
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('link', { name: /^Voltar$/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Painel Administrativo/i)).toBeInTheDocument()
+    })
+  })
+
   it('admin can see user management section', async () => {
     await loginAs('Admin')
 

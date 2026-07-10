@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,6 @@ import { useState } from 'react'
 
 export default function ClientDetails() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const { publicUsers, getUserProgress, workouts, assignWorkout, assignments } =
     useData()
   const { user } = useAuth()
@@ -60,12 +59,10 @@ export default function ClientDetails() {
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <Button
-        variant="ghost"
-        className="mb-4 pl-0"
-        onClick={() => navigate('/trainer-dashboard')}
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" /> Voltar ao Painel
+      <Button variant="ghost" className="mb-4 pl-0" asChild>
+        <Link to="/trainer-dashboard">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Voltar ao Painel
+        </Link>
       </Button>
 
       <div className="flex flex-col md:flex-row gap-8 mb-8 items-start">

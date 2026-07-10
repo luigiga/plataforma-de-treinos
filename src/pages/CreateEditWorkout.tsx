@@ -1,11 +1,11 @@
-import { useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { useData } from '@/context/DataContext'
 import { useAuth } from '@/context/AuthContext'
-import { getDefaultDashboardPath } from '@/lib/auth-routing'
+import { getRoleHomePath } from '@/lib/auth-routing'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -29,7 +29,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, ArrowLeft, Loader2 } from 'lucide-react'
 import { ExerciseFormItem } from '@/components/ExerciseFormItem'
-import { useState } from 'react'
 
 const variationSchema = z.object({
   name: z.string(),
@@ -60,29 +59,50 @@ export default function CreateEditWorkout() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { addWorkout, updateWorkout, workouts } = useData()
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const isEditing = !!id
   const existingWorkout = workouts.find((w) => w.id === id)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Validação de permissões: apenas trainers podem criar/editar workouts
+  const homePath = useMemo(
+    () => getRoleHomePath(user?.role),
+    [user?.role],
+  )
+
+  // Validação de permissões: apenas trainers/admins
   useEffect(() => {
+    if (loading) return
+
     if (!user) {
-      navigate('/auth?tab=login')
+      navigate('/auth?tab=login&redirect=%2Fcreate-workout', { replace: true })
       return
     }
     if (user.role !== 'trainer' && user.role !== 'admin') {
-      navigate(getDefaultDashboardPath(user.role))
+      navigate(homePath, { replace: true })
       return
     }
-    // Se está editando, verificar se o workout pertence ao trainer
     if (isEditing && existingWorkout) {
       if (existingWorkout.trainerId !== user.id && user.role !== 'admin') {
-        navigate('/trainer-dashboard')
-        return
+        navigate(homePath, { replace: true })
       }
     }
-  }, [user, isEditing, existingWorkout, navigate])
+  }, [user, loading, isEditing, existingWorkout, navigate, homePath])
+
+  // Treino inexistente ao editar
+  useEffect(() => {
+    if (loading || !user || !isEditing) return
+    if (workouts.length > 0 && !existingWorkout) {
+      navigate(homePath, { replace: true })
+    }
+  }, [
+    loading,
+    user,
+    isEditing,
+    workouts.length,
+    existingWorkout,
+    navigate,
+    homePath,
+  ])
 
   const form = useForm<z.infer<typeof workoutSchema>>({
     resolver: zodResolver(workoutSchema),
@@ -128,7 +148,7 @@ export default function CreateEditWorkout() {
     setIsSubmitting(true)
     try {
       if (!user?.id) {
-        navigate('/auth?tab=login')
+        navigate('/auth?tab=login', { replace: true })
         return
       }
 
@@ -146,9 +166,7 @@ export default function CreateEditWorkout() {
         await addWorkout(workoutData)
       }
 
-      navigate(
-        user.role === 'admin' ? '/admin-dashboard' : '/trainer-dashboard',
-      )
+      navigate(homePath, { replace: true })
     } catch (_error) {
       // Error handling já está no contexto
     } finally {
@@ -156,14 +174,16 @@ export default function CreateEditWorkout() {
     }
   }
 
+  if (loading || !user) {
+    return null
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl animate-fade-in">
-      <Button
-        variant="ghost"
-        className="mb-4 pl-0"
-        onClick={() => navigate('/trainer-dashboard')}
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
+      <Button variant="ghost" className="mb-4 pl-0" asChild>
+        <Link to={homePath}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
+        </Link>
       </Button>
       <h1 className="text-2xl md:text-3xl font-bold mb-8">
         {isEditing ? 'Editar Treino' : 'Criar Novo Treino'}
@@ -312,19 +332,25 @@ export default function CreateEditWorkout() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate('/trainer-dashboard')}
               className="w-full sm:w-auto"
+              asChild
             >
-              Cancelar
+              <Link to={homePath}>Cancelar</Link>
             </Button>
-            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {isEditing ? 'Atualizando...' : 'Criando...'}
                 </>
+              ) : isEditing ? (
+                'Atualizar Treino'
               ) : (
-                isEditing ? 'Atualizar Treino' : 'Criar Treino'
+                'Criar Treino'
               )}
             </Button>
           </div>

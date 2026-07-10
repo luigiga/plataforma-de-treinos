@@ -10,6 +10,8 @@ describe('getDefaultDashboardPath', () => {
     expect(getDefaultDashboardPath('admin')).toBe('/admin-dashboard')
     expect(getDefaultDashboardPath('trainer')).toBe('/trainer-dashboard')
     expect(getDefaultDashboardPath('subscriber')).toBe('/dashboard')
+    expect(getDefaultDashboardPath(null)).toBe('/auth?tab=login')
+    expect(getDefaultDashboardPath(undefined)).toBe('/auth?tab=login')
   })
 })
 

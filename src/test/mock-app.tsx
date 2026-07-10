@@ -14,6 +14,8 @@ import Social from '@/pages/Social'
 import Profile from '@/pages/Profile'
 import Auth from '@/pages/Auth'
 import Index from '@/pages/Index'
+import CreateEditWorkout from '@/pages/CreateEditWorkout'
+import ClientDetails from '@/pages/ClientDetails'
 
 function TestProviders({
   children,
@@ -81,6 +83,30 @@ export function MockAppRoutes({
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/create-workout"
+            element={
+              <ProtectedRoute allowedRoles={['trainer', 'admin']}>
+                <CreateEditWorkout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/edit-workout/:id"
+            element={
+              <ProtectedRoute allowedRoles={['trainer', 'admin']}>
+                <CreateEditWorkout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/trainer/client/:id"
+            element={
+              <ProtectedRoute allowedRoles={['trainer']}>
+                <ClientDetails />
               </ProtectedRoute>
             }
           />
