@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import EmailConfirm from './EmailConfirm'
 
@@ -45,6 +45,12 @@ function LocationEcho() {
   return <div>{`loc:${location.pathname}${location.search}`}</div>
 }
 
+async function flushEmailConfirmation() {
+  await act(async () => {
+    await Promise.resolve()
+  })
+}
+
 beforeEach(() => {
   vi.useFakeTimers()
 })
@@ -85,12 +91,12 @@ describe('EmailConfirm page', () => {
       </MemoryRouter>,
     )
 
-    await waitFor(() => {
-      expect(exchangeCodeForSessionMock).toHaveBeenCalledWith('abc')
-      expect(
-        screen.getByText('Email confirmado com sucesso! Redirecionando...'),
-      ).toBeInTheDocument()
-    })
+    await flushEmailConfirmation()
+
+    expect(exchangeCodeForSessionMock).toHaveBeenCalledWith('abc')
+    expect(
+      screen.getByText('Email confirmado com sucesso! Redirecionando...'),
+    ).toBeInTheDocument()
 
     act(() => {
       vi.advanceTimersByTime(1300)
@@ -115,15 +121,15 @@ describe('EmailConfirm page', () => {
       </MemoryRouter>,
     )
 
-    await waitFor(() => {
-      expect(verifyOtpMock).toHaveBeenCalledWith({
-        token_hash: 'hash123',
-        type: 'signup',
-      })
-      expect(
-        screen.getByText('Email confirmado! Faça login para continuar.'),
-      ).toBeInTheDocument()
+    await flushEmailConfirmation()
+
+    expect(verifyOtpMock).toHaveBeenCalledWith({
+      token_hash: 'hash123',
+      type: 'signup',
     })
+    expect(
+      screen.getByText('Email confirmado! Faça login para continuar.'),
+    ).toBeInTheDocument()
 
     act(() => {
       vi.advanceTimersByTime(1900)
@@ -147,12 +153,12 @@ describe('EmailConfirm page', () => {
       </MemoryRouter>,
     )
 
-    await waitFor(() => {
-      expect(screen.getByText('Erro na confirmação')).toBeInTheDocument()
-      expect(
-        screen.getByText('invalid or expired token'),
-      ).toBeInTheDocument()
-    })
+    await flushEmailConfirmation()
+
+    expect(screen.getByText('Erro na confirmação')).toBeInTheDocument()
+    expect(
+      screen.getByText('invalid or expired token'),
+    ).toBeInTheDocument()
 
     expect(loggerErrorMock).toHaveBeenCalled()
   })
