@@ -30,6 +30,7 @@ screenshot.png
 # Environment variables
 .env*
 !.env.example
+!.env.docker.example
 
 # Supabase temp files
 supabase/.temp/
