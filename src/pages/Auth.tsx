@@ -26,6 +26,12 @@ import {
 import { useDebounce } from '@/hooks/use-debounce'
 import { Loader2, Check, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { USE_MOCKS } from '@/lib/config'
+import { MOCK_PASSWORD, mockQuickLogins } from '@/mocks/fixtures'
+import {
+  resolvePostAuthPath,
+  sanitizeRedirectPath,
+} from '@/lib/auth-routing'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -76,7 +82,7 @@ export default function Auth() {
   useEffect(() => {
     if (!user) return
 
-    navigate(safeRedirect || getDefaultDashboardPath(user.role), {
+    navigate(resolvePostAuthPath(user.role, safeRedirect), {
       replace: true,
     })
   }, [user, navigate, safeRedirect])
@@ -207,12 +213,42 @@ export default function Auth() {
             Bem-vindo
           </CardTitle>
           <CardDescription>
-            Entre ou crie sua conta para continuar
+            {USE_MOCKS
+              ? 'Modo MOCK — use os atalhos abaixo ou a senha demo123'
+              : 'Entre ou crie sua conta para continuar'}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {USE_MOCKS && (
+            <div className="mb-6 space-y-2">
+              <p className="text-xs text-muted-foreground text-center">
+                Entrar rapidamente como:
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {mockQuickLogins.map((persona) => (
+                  <Button
+                    key={persona.email}
+                    type="button"
+                    variant="outline"
+                    className="h-auto flex-col py-2 px-2 text-xs"
+                    onClick={async () => {
+                      const { error } = await login(
+                        persona.email,
+                        MOCK_PASSWORD,
+                      )
+                      if (error) toast.error(error.message)
+                    }}
+                  >
+                    <span className="font-semibold">{persona.label}</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">
+                      {persona.description}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           <Tabs
-            defaultValue={activeTab}
             value={activeTab}
             onValueChange={handleTabChange}
             className="w-full"
@@ -441,31 +477,6 @@ export default function Auth() {
       </Card>
     </div>
   )
-}
-
-function getDefaultDashboardPath(
-  role: 'subscriber' | 'trainer' | 'admin',
-): string {
-  switch (role) {
-    case 'admin':
-      return '/admin-dashboard'
-    case 'trainer':
-      return '/trainer-dashboard'
-    case 'subscriber':
-    default:
-      return '/dashboard'
-  }
-}
-
-function sanitizeRedirectPath(path?: string | null): string | null {
-  if (!path) return null
-
-  const normalizedPath = path.trim()
-
-  if (!normalizedPath.startsWith('/')) return null
-  if (normalizedPath.startsWith('//')) return null
-
-  return normalizedPath
 }
 
 function buildAuthSearchParams({

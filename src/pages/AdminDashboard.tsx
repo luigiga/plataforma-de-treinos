@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth, User } from '@/context/AuthContext'
 import { profileService } from '@/services/profile'
 import { Button } from '@/components/ui/button'
@@ -62,7 +61,6 @@ import {
 
 export default function AdminDashboard() {
   const { user, deleteUser, toggleUserStatus } = useAuth()
-  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -72,6 +70,13 @@ export default function AdminDashboard() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [userToToggle, setUserToToggle] = useState<User | null>(null)
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const [stats, setStats] = useState({
+    total: 0,
+    subscribers: 0,
+    trainers: 0,
+    admins: 0,
+    active: 0,
+  })
   const pageSize = 20
 
   // Função para mapear profile para User
@@ -126,26 +131,11 @@ export default function AdminDashboard() {
     setCurrentPage(1)
   }, [searchTerm, roleFilter, statusFilter])
 
-  // Removido verificação manual - ProtectedRoute já faz isso
-  if (!user || user.role !== 'admin') return null
-
-  const totalPages = Math.ceil(totalUsers / pageSize)
-
-  // Estatísticas - buscar totais separadamente para não depender da página atual
-  const [stats, setStats] = useState({
-    total: 0,
-    subscribers: 0,
-    trainers: 0,
-    admins: 0,
-    active: 0,
-  })
-
   useEffect(() => {
     const loadStats = async () => {
       if (!user || user.role !== 'admin') return
 
       try {
-        // Buscar totais por role e status
         const [allResult, subscribersResult, trainersResult, adminsResult, activeResult] = await Promise.all([
           profileService.getAllProfilesPaginated({ page: 1, pageSize: 1 }),
           profileService.getAllProfilesPaginated({ page: 1, pageSize: 1, role: 'subscriber' }),
@@ -168,6 +158,11 @@ export default function AdminDashboard() {
 
     loadStats()
   }, [user])
+
+  // Removido verificação manual - ProtectedRoute já faz isso
+  if (!user || user.role !== 'admin') return null
+
+  const totalPages = Math.ceil(totalUsers / pageSize)
 
   const handleDeleteConfirm = () => {
     if (userToDelete) {

@@ -10,6 +10,8 @@ import { Loader2, ArrowLeft, UserX, UserPlus, UserCheck, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
 import { useData } from '@/context/DataContext'
+import { USE_MOCKS } from '@/lib/config'
+import { mockStore } from '@/mocks/store'
 
 interface PublicProfileData {
   id: string
@@ -33,6 +35,22 @@ export default function PublicProfile() {
       if (!username) return
 
       try {
+        if (USE_MOCKS) {
+          const mockUser = mockStore.getUserByUsername(username)
+          if (!mockUser) {
+            throw new Error('Profile not found')
+          }
+          setProfile({
+            id: mockUser.id,
+            username: mockUser.username,
+            full_name: mockUser.full_name || mockUser.name,
+            bio: mockUser.bio || '',
+            avatar_url: mockUser.avatar || '',
+            role: mockUser.role,
+          })
+          return
+        }
+
         const { data, error } = await supabase
           .from('profiles')
           .select('id, username, full_name, bio, avatar_url, role')

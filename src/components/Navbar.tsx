@@ -31,9 +31,11 @@ export function Navbar() {
   }, [])
 
   const handleLogout = async () => {
-    await logout()
-    navigate('/')
     setIsMobileMenuOpen(false)
+    // Sai da rota protegida antes de limpar a sessão para evitar
+    // corrida com ProtectedRoute (/auth?redirect=/admin-dashboard).
+    navigate('/', { replace: true })
+    await logout()
   }
 
   const navLinks = [

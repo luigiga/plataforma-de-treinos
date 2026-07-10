@@ -18,11 +18,11 @@ interface StripeCheckoutProps {
 }
 
 function CheckoutForm({
-  clientSecret,
+  clientSecret: _clientSecret,
   onSuccess,
   onError,
   amount,
-  description,
+  description: _description,
 }: StripeCheckoutProps) {
   const stripe = useStripe()
   const elements = useElements()

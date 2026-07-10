@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import { Check, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/context/AuthContext'
 import { PaymentDialog } from '@/components/PaymentDialog'
@@ -17,6 +17,8 @@ import { useProducts } from '@/hooks/use-payments'
 import { useReferral } from '@/hooks/use-referrals'
 import { useNavigate } from 'react-router-dom'
 import { Product } from '@/services/payments/products'
+import { USE_MOCKS } from '@/lib/config'
+import { getDefaultDashboardPath } from '@/lib/auth-routing'
 
 export default function SubscriptionPlans() {
   const [isAnnual, setIsAnnual] = useState(false)
@@ -27,6 +29,25 @@ export default function SubscriptionPlans() {
 
   // Buscar produtos de assinatura do banco
   const { data: products, isLoading } = useProducts({ type: 'subscription' })
+
+  if (USE_MOCKS) {
+    const dashboardPath = user
+      ? getDefaultDashboardPath(user.role)
+      : '/auth?tab=login'
+
+    return (
+      <div className="container mx-auto px-4 py-12 md:py-20 text-center max-w-xl">
+        <h1 className="text-3xl md:text-4xl font-bold mb-4">Planos</h1>
+        <p className="text-muted-foreground">
+          Pagamentos e assinaturas ficam desabilitados no modo MOCK. Use os
+          dashboards e treinos para validar a experiência da plataforma.
+        </p>
+        <Button className="mt-6" onClick={() => navigate(dashboardPath)}>
+          Ir para o dashboard
+        </Button>
+      </div>
+    )
+  }
 
   // Filtrar produtos por período (mensal ou anual)
   const filteredProducts = products?.filter((p) => {
@@ -52,7 +73,9 @@ export default function SubscriptionPlans() {
 
   const handlePaymentSuccess = () => {
     setSelectedProduct(null)
-    navigate('/dashboard')
+    navigate(user ? getDefaultDashboardPath(user.role) : '/dashboard', {
+      replace: true,
+    })
   }
 
   return (

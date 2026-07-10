@@ -1,0 +1,31 @@
+# Frontend SPA (React/Vite) para VPS Hostinger / Docker Manager.
+# Backend continua no Supabase Cloud; Stripe nas Edge Functions.
+#
+# Build local (use .env.docker — NÃO o .env de mock):
+#   cp .env.docker.example .env.docker
+#   docker compose --env-file .env.docker build
+#   docker compose --env-file .env.docker up -d
+#
+# Variáveis VITE_* são injetadas no BUILD (não em runtime).
+# VITE_USE_MOCKS fica sempre false neste compose de produção.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_USE_MOCKS: "false"
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:-}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+    image: plataforma-de-treinos-web:latest
+    ports:
+      - "${PORT:-80}:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

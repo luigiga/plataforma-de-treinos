@@ -1,6 +1,11 @@
 import { ReactNode, useEffect } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import {
+  getDefaultDashboardPath,
+  resolvePostAuthPath,
+  sanitizeRedirectPath,
+} from '@/lib/auth-routing'
 import { Loading } from './Loading'
 import { toast } from 'sonner'
 
@@ -48,7 +53,12 @@ export function ProtectedRoute({
   // Página pública que redireciona apenas se já estiver autenticado
   if (redirectIfAuthenticated) {
     if (user) {
-      const targetPath = safeRedirectTo || getDefaultDashboardPath(user.role)
+      const redirectFromQuery = new URLSearchParams(location.search).get(
+        'redirect',
+      )
+      const targetPath =
+        safeRedirectTo ||
+        resolvePostAuthPath(user.role, redirectFromQuery)
       return <Navigate to={targetPath} replace />
     }
 
@@ -65,9 +75,12 @@ export function ProtectedRoute({
       `${location.pathname}${location.search}${location.hash}`,
     )
 
-    const redirectParam = from
-      ? `&redirect=${encodeURIComponent(from)}`
-      : ''
+    // Evita loop: não devolver o usuário para a mesma rota protegida
+    // logo após logout (especialmente /admin-dashboard).
+    const redirectParam =
+      from && from !== '/'
+        ? `&redirect=${encodeURIComponent(from)}`
+        : ''
 
     return <Navigate to={`/auth?tab=login${redirectParam}`} replace />
   }
@@ -79,29 +92,4 @@ export function ProtectedRoute({
   }
 
   return <>{children}</>
-}
-
-function getDefaultDashboardPath(
-  role: 'subscriber' | 'trainer' | 'admin',
-): string {
-  switch (role) {
-    case 'admin':
-      return '/admin-dashboard'
-    case 'trainer':
-      return '/trainer-dashboard'
-    case 'subscriber':
-    default:
-      return '/dashboard'
-  }
-}
-
-function sanitizeRedirectPath(path?: string | null): string | null {
-  if (!path) return null
-
-  const normalizedPath = path.trim()
-
-  if (!normalizedPath.startsWith('/')) return null
-  if (normalizedPath.startsWith('//')) return null
-
-  return normalizedPath
 }

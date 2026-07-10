@@ -72,7 +72,7 @@ export function ProgressLogger({
       setOpen(false)
       setDuration('')
       setNotes('')
-    } catch (error) {
+    } catch (_error) {
       toast.error('Erro ao registrar progresso')
     } finally {
       setIsSubmitting(false)

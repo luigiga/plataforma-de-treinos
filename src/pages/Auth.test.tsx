@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import Auth from './Auth'
 
-const useAuthMock = vi.fn()
-const toastErrorMock = vi.fn()
-const toastInfoMock = vi.fn()
+const { useAuthMock, toastErrorMock, toastInfoMock } = vi.hoisted(() => ({
+  useAuthMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+  toastInfoMock: vi.fn(),
+}))
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
@@ -50,20 +53,51 @@ describe('Auth page', () => {
     })
 
     render(
-      <MemoryRouter initialEntries={['/auth?tab=login&redirect=%2Fprogress']}>
+      <MemoryRouter initialEntries={['/auth?tab=login&redirect=%2Fprofile']}>
         <Routes>
-          <Route path="/progress" element={<LocationEcho />} />
+          <Route path="/profile" element={<LocationEcho />} />
           <Route path="/auth" element={<><LocationEcho /><Auth /></>} />
         </Routes>
       </MemoryRouter>,
     )
 
     await waitFor(() => {
-      expect(screen.getByText('loc:/progress')).toBeInTheDocument()
+      expect(screen.getByText('loc:/profile')).toBeInTheDocument()
+    })
+  })
+
+  it('ignores role-incompatible redirect and uses role dashboard', async () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: '3',
+        username: 'admin',
+        full_name: 'Admin',
+        name: 'Admin',
+        email: 'admin@example.com',
+        role: 'admin',
+      },
+      login: vi.fn(),
+      register: vi.fn(),
+      checkUsernameAvailability: vi.fn().mockResolvedValue(true),
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/auth?tab=login&redirect=%2Fdashboard']}>
+        <Routes>
+          <Route path="/admin-dashboard" element={<LocationEcho />} />
+          <Route path="/dashboard" element={<LocationEcho />} />
+          <Route path="/auth" element={<><LocationEcho /><Auth /></>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('loc:/admin-dashboard')).toBeInTheDocument()
     })
   })
 
   it('preserves redirect and role params when switching tabs', async () => {
+    const user = userEvent.setup()
     useAuthMock.mockReturnValue({
       user: null,
       login: vi.fn(),
@@ -79,7 +113,7 @@ describe('Auth page', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Cadastrar' }))
+    await user.click(screen.getByRole('tab', { name: 'Cadastrar' }))
 
     await waitFor(() => {
       expect(

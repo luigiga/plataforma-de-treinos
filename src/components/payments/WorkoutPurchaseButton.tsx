@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useProductByWorkout, useCreatePaymentIntent } from '@/hooks/use-payments'
-import { useReferral } from '@/hooks/use-referrals'
+import { useProductByWorkout } from '@/hooks/use-payments'
 import { Button } from '@/components/ui/button'
 import { PaymentDialog } from '@/components/PaymentDialog'
-import { Loader2, Lock, ShoppingCart } from 'lucide-react'
+import { Loader2, ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import { PAYMENTS_ENABLED, USE_MOCKS } from '@/lib/config'
 
 interface WorkoutPurchaseButtonProps {
   workoutId: string
@@ -22,14 +22,14 @@ export function WorkoutPurchaseButton({
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { referralTrainerId } = useReferral()
   const { data: product, isLoading } = useProductByWorkout(workoutId)
-  const createPaymentIntent = useCreatePaymentIntent()
 
   const handlePurchaseClick = () => {
     if (!user) {
       toast.error('Você precisa estar logado para comprar este treino')
-      navigate('/auth?tab=login')
+      navigate(
+        `/auth?tab=login&redirect=${encodeURIComponent(`/workout/${workoutId}`)}`,
+      )
       return
     }
 
@@ -46,6 +46,14 @@ export function WorkoutPurchaseButton({
     toast.success('Treino comprado com sucesso! Agora você tem acesso completo.')
     // Recarregar a página para atualizar o acesso
     window.location.reload()
+  }
+
+  if (USE_MOCKS || !PAYMENTS_ENABLED) {
+    return (
+      <Button size="lg" className="w-full" variant="secondary" disabled>
+        Pagamentos desabilitados no modo mock
+      </Button>
+    )
   }
 
   if (isLoading) {

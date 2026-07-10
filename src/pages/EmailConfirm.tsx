@@ -12,6 +12,8 @@ import {
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/context/AuthContext'
 import { logger } from '@/lib/logger'
+import { USE_MOCKS } from '@/lib/config'
+import { getDefaultDashboardPath } from '@/lib/auth-routing'
 
 type ConfirmStatus = 'loading' | 'success' | 'error'
 type RedirectRole = 'subscriber' | 'trainer' | 'admin'
@@ -30,18 +32,6 @@ function isVerifyType(value: string | null): value is VerifyType {
     value === 'email_change' ||
     value === 'email'
   )
-}
-
-function getDefaultDashboardPath(role?: RedirectRole | null) {
-  switch (role) {
-    case 'admin':
-      return '/admin-dashboard'
-    case 'trainer':
-      return '/trainer-dashboard'
-    case 'subscriber':
-    default:
-      return '/dashboard'
-  }
 }
 
 function getRoleFromSession(session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) {
@@ -82,6 +72,15 @@ export default function EmailConfirm() {
 
     const handleEmailConfirmation = async () => {
       try {
+        if (USE_MOCKS) {
+          setStatus('success')
+          setMessage(
+            'Confirmação de email não se aplica no modo MOCK. Redirecionando para login...',
+          )
+          redirectToLogin(1200)
+          return
+        }
+
         const code = searchParams.get('code')
         const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash')
         const typeParam = searchParams.get('type') || hashParams.get('type')

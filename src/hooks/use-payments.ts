@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { productService, Product } from '@/services/payments/products'
-import { subscriptionService, Subscription } from '@/services/payments/subscriptions'
-import { transactionService, Transaction } from '@/services/payments/transactions'
-import { splitService, TrainerEarnings } from '@/services/payments/splits'
+import { productService } from '@/services/payments/products'
+import { subscriptionService } from '@/services/payments/subscriptions'
+import { transactionService } from '@/services/payments/transactions'
+import { splitService } from '@/services/payments/splits'
 import { stripeService } from '@/services/payments/stripe'
 import { useAuth } from '@/context/AuthContext'
+import { PAYMENTS_ENABLED } from '@/lib/config'
 import { toast } from 'sonner'
 
 /**
@@ -18,6 +19,7 @@ export function useProducts(filters?: {
   return useQuery({
     queryKey: ['products', filters],
     queryFn: () => productService.getProducts(filters),
+    enabled: PAYMENTS_ENABLED,
     staleTime: 5 * 60 * 1000, // 5 minutos
   })
 }
@@ -29,7 +31,7 @@ export function useProduct(productId: string | null) {
   return useQuery({
     queryKey: ['product', productId],
     queryFn: () => (productId ? productService.getProductById(productId) : null),
-    enabled: !!productId,
+    enabled: PAYMENTS_ENABLED && !!productId,
   })
 }
 
@@ -40,7 +42,7 @@ export function useProductByWorkout(workoutId: string | null) {
   return useQuery({
     queryKey: ['product', 'workout', workoutId],
     queryFn: () => (workoutId ? productService.getProductByWorkoutId(workoutId) : null),
-    enabled: !!workoutId,
+    enabled: PAYMENTS_ENABLED && !!workoutId,
   })
 }
 
@@ -53,7 +55,7 @@ export function useSubscriptions() {
   return useQuery({
     queryKey: ['subscriptions', user?.id],
     queryFn: () => (user ? subscriptionService.getUserSubscriptions(user.id) : []),
-    enabled: !!user,
+    enabled: PAYMENTS_ENABLED && !!user,
   })
 }
 
@@ -66,7 +68,7 @@ export function useActiveSubscription() {
   return useQuery({
     queryKey: ['subscription', 'active', user?.id],
     queryFn: () => (user ? subscriptionService.getActiveSubscription(user.id) : null),
-    enabled: !!user,
+    enabled: PAYMENTS_ENABLED && !!user,
   })
 }
 
@@ -138,7 +140,7 @@ export function useTransactions(page: number = 1, pageSize: number = 20) {
     queryKey: ['transactions', user?.id, page, pageSize],
     queryFn: () =>
       user ? transactionService.getUserTransactions(user.id, { page, pageSize }) : null,
-    enabled: !!user,
+    enabled: PAYMENTS_ENABLED && !!user,
   })
 }
 
@@ -150,7 +152,7 @@ export function useTrainerTransactions(trainerId: string | null, page: number = 
     queryKey: ['transactions', 'trainer', trainerId, page, pageSize],
     queryFn: () =>
       trainerId ? transactionService.getTrainerTransactions(trainerId, { page, pageSize }) : null,
-    enabled: !!trainerId,
+    enabled: PAYMENTS_ENABLED && !!trainerId,
   })
 }
 
@@ -161,7 +163,7 @@ export function useTrainerEarnings(trainerId: string | null) {
   return useQuery({
     queryKey: ['earnings', trainerId],
     queryFn: () => (trainerId ? splitService.getTrainerEarnings(trainerId) : null),
-    enabled: !!trainerId,
+    enabled: PAYMENTS_ENABLED && !!trainerId,
     staleTime: 2 * 60 * 1000, // 2 minutos
   })
 }

@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase/client'
 import { profileService, Profile, ProfileUpdate } from '@/services/profile'
+import { USE_MOCKS } from '@/lib/config'
 
 export type UserRole = 'subscriber' | 'trainer' | 'admin'
 export type SubscriptionStatus = 'active' | 'inactive' | 'canceled'
@@ -81,7 +82,7 @@ interface AuthContextType {
   loading: boolean
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const defaultNotificationPreferences: NotificationPreferences = {
   newFollower: true,
@@ -211,6 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (USE_MOCKS) return
     if (
       !import.meta.env.VITE_SUPABASE_URL ||
       !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
@@ -583,7 +585,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await profileService.deleteProfile(id)
       setAllUsers((prev) => prev.filter((u) => u.id !== id))
       toast.success('Usuário excluído com sucesso.')
-    } catch (error) {
+    } catch (_error) {
       toast.error('Erro ao excluir usuário')
     }
   }, [])
@@ -613,7 +615,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         toast.success(
           `Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'}.`,
         )
-      } catch (error) {
+      } catch (_error) {
         toast.error('Erro ao atualizar status')
       }
     },

@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
 import { Notification } from '@/context/DataContext'
+import { USE_MOCKS } from '@/lib/config'
+import { mockStore } from '@/mocks/store'
 
 export interface PaginationParams {
   page?: number
@@ -35,6 +37,10 @@ export const notificationService = {
    * @deprecated Use fetchNotificationsPaginated for better performance
    */
   async fetchNotifications(userId: string): Promise<Notification[]> {
+    if (USE_MOCKS) {
+      return mockStore.listNotifications(userId, 1, 50).data
+    }
+
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
@@ -53,6 +59,14 @@ export const notificationService = {
     userId: string,
     params: PaginationParams = {},
   ): Promise<PaginatedResponse<Notification>> {
+    if (USE_MOCKS) {
+      return mockStore.listNotifications(
+        userId,
+        params.page || 1,
+        params.pageSize || 20,
+      )
+    }
+
     const page = params.page || 1
     const pageSize = params.pageSize || 20
     const offset = (page - 1) * pageSize
@@ -86,6 +100,12 @@ export const notificationService = {
    * Fetch unread notifications count (otimizado)
    */
   async fetchUnreadCount(userId: string): Promise<number> {
+    if (USE_MOCKS) {
+      return mockStore
+        .listNotifications(userId, 1, 1000)
+        .data.filter((item) => !item.read).length
+    }
+
     const { count, error } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
@@ -97,6 +117,11 @@ export const notificationService = {
   },
 
   async markAsRead(id: string) {
+    if (USE_MOCKS) {
+      mockStore.markNotificationRead(id)
+      return
+    }
+
     const { error } = await supabase
       .from('notifications')
       .update({ read_at: new Date().toISOString() })
@@ -110,6 +135,11 @@ export const notificationService = {
       userId: string
     },
   ) {
+    if (USE_MOCKS) {
+      mockStore.addNotification(notification)
+      return
+    }
+
     const { error } = await supabase.from('notifications').insert({
       user_id: notification.userId,
       content: notification.message,

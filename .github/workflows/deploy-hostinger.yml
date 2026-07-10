@@ -1,0 +1,36 @@
+# Deploy para Hostinger VPS via Docker Compose.
+# Pré-requisitos no GitHub (Settings → Secrets / Variables):
+#   secrets.HOSTINGER_API_KEY
+#   vars.HOSTINGER_VM_ID
+#   secrets.VITE_SUPABASE_URL
+#   secrets.VITE_SUPABASE_PUBLISHABLE_KEY
+#   secrets.VITE_STRIPE_PUBLISHABLE_KEY  (opcional)
+#
+# Desative este workflow (ou o job) até configurar os secrets/VPS.
+
+name: Deploy Hostinger
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Deploy to Hostinger VPS
+        uses: hostinger/deploy-on-vps@v2
+        with:
+          api-key: ${{ secrets.HOSTINGER_API_KEY }}
+          virtual-machine: ${{ vars.HOSTINGER_VM_ID }}
+          project-name: plataforma-de-treinos
+          docker-compose-path: docker-compose.yml
+          environment-variables: |
+            VITE_USE_MOCKS=false
+            VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
+            VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+            VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+            PORT=80
