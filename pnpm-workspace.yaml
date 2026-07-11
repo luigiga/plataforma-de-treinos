@@ -1,4 +1,8 @@
+allowBuilds:
+  esbuild: set this to true or false
 onlyBuiltDependencies:
   - '@swc/core'
   - esbuild
+allowBuilds:
+  esbuild: true
 virtualStoreDir: ${PODS_MANAGER_ROOT:-/app}/pods/${PROJECT_ID:-project}/node_modules/.pnpm
