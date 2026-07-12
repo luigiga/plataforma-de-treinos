@@ -33,7 +33,7 @@ export default function WorkoutDetails() {
   const { workouts } = useData()
   const { user } = useAuth()
   const workout = workouts.find((w) => w.id === id)
-  const { data: access, isLoading: accessLoading } = useWorkoutAccess(workout || null)
+  const { data: access } = useWorkoutAccess(workout || null)
 
   if (!workout)
     return (

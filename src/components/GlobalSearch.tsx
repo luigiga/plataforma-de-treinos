@@ -9,7 +9,7 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Button } from '@/components/ui/button'
-import { Search, User, Dumbbell, Activity } from 'lucide-react'
+import { Search, Dumbbell, Activity } from 'lucide-react'
 import { searchService, SearchResult } from '@/services/search'
 import { useDebounce } from '@/hooks/use-debounce'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'

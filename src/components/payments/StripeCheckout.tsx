@@ -18,11 +18,9 @@ interface StripeCheckoutProps {
 }
 
 function CheckoutForm({
-  clientSecret,
   onSuccess,
   onError,
   amount,
-  description,
 }: StripeCheckoutProps) {
   const stripe = useStripe()
   const elements = useElements()
@@ -102,7 +100,6 @@ export function StripeCheckout({
   onSuccess,
   onError,
   amount,
-  description,
 }: StripeCheckoutProps) {
   const [stripeLoaded, setStripeLoaded] = useState(false)
 
@@ -129,11 +126,9 @@ export function StripeCheckout({
       }}
     >
       <CheckoutForm
-        clientSecret={clientSecret}
         onSuccess={onSuccess}
         onError={onError}
         amount={amount}
-        description={description}
       />
     </Elements>
   )
