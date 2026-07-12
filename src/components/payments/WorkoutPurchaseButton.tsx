@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { useProductByWorkout, useCreatePaymentIntent } from '@/hooks/use-payments'
-import { useReferral } from '@/hooks/use-referrals'
+import { useProductByWorkout } from '@/hooks/use-payments'
 import { Button } from '@/components/ui/button'
 import { PaymentDialog } from '@/components/PaymentDialog'
-import { Loader2, Lock, ShoppingCart } from 'lucide-react'
+import { Loader2, ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
@@ -22,9 +21,7 @@ export function WorkoutPurchaseButton({
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { referralTrainerId } = useReferral()
   const { data: product, isLoading } = useProductByWorkout(workoutId)
-  const createPaymentIntent = useCreatePaymentIntent()
 
   const handlePurchaseClick = () => {
     if (!user) {

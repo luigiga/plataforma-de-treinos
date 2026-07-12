@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { CheckCircle2, Users, TrendingUp, PlayCircle, Star } from 'lucide-react'
+import { CheckCircle2, TrendingUp, PlayCircle, Star } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { OptimizedImage } from '@/components/OptimizedImage'
 import {

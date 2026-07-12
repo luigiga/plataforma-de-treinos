@@ -359,7 +359,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         await workoutService.deleteWorkout(id)
         refreshData()
         toast.success('Treino excluído.')
-      } catch (error) {
+      } catch (_error) {
         toast.error('Erro ao excluir treino')
       }
     },
@@ -379,7 +379,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
         await workoutService.addReview(reviewData)
         refreshData()
         toast.success('Avaliação enviada!')
-      } catch (error) {
+      } catch (_error) {
         toast.error('Erro ao enviar avaliação')
       }
     },
@@ -476,7 +476,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
           type: 'new_follower',
           link: '/social',
         })
-      } catch (error) {
+      } catch (_error) {
         toast.error('Erro ao seguir usuário')
       }
     },
@@ -494,7 +494,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
           ),
         )
         toast.info('Você deixou de seguir este usuário.')
-      } catch (error) {
+      } catch (_error) {
         toast.error('Erro ao deixar de seguir')
       }
     },
@@ -513,7 +513,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
           ),
         )
         toast.success('Solicitação aceita!')
-      } catch (error) {
+      } catch (_error) {
         toast.error('Erro ao aceitar solicitação')
       }
     },
@@ -531,7 +531,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({
           ),
         )
         toast.info('Solicitação recusada.')
-      } catch (error) {
+      } catch (_error) {
         toast.error('Erro ao recusar solicitação')
       }
     },

@@ -67,8 +67,8 @@ const socialSchema = z.object({
 
 export default function Profile() {
   const { user, updateUser, checkUsernameAvailability } = useAuth()
-  const [isSubmittingProfile, setIsSubmittingProfile] = useState(false)
-  const [isSubmittingSocial, setIsSubmittingSocial] = useState(false)
+  const [, setIsSubmittingProfile] = useState(false)
+  const [, setIsSubmittingSocial] = useState(false)
   const { following } = useData()
   const [uploading, setUploading] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)

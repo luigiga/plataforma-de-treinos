@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { workoutService, PaginationParams, PaginatedResponse } from '@/services/workouts'
+import { workoutService, PaginationParams } from '@/services/workouts'
 import { Workout, Review } from '@/context/DataContext'
 
 /**
