@@ -72,6 +72,13 @@ export default function AdminDashboard() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [userToToggle, setUserToToggle] = useState<User | null>(null)
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const [stats, setStats] = useState({
+    total: 0,
+    subscribers: 0,
+    trainers: 0,
+    admins: 0,
+    active: 0,
+  })
   const pageSize = 20
 
   // Função para mapear profile para User
@@ -126,20 +133,7 @@ export default function AdminDashboard() {
     setCurrentPage(1)
   }, [searchTerm, roleFilter, statusFilter])
 
-  // Removido verificação manual - ProtectedRoute já faz isso
-  if (!user || user.role !== 'admin') return null
-
-  const totalPages = Math.ceil(totalUsers / pageSize)
-
   // Estatísticas - buscar totais separadamente para não depender da página atual
-  const [stats, setStats] = useState({
-    total: 0,
-    subscribers: 0,
-    trainers: 0,
-    admins: 0,
-    active: 0,
-  })
-
   useEffect(() => {
     const loadStats = async () => {
       if (!user || user.role !== 'admin') return
@@ -168,6 +162,11 @@ export default function AdminDashboard() {
 
     loadStats()
   }, [user])
+
+  // Removido verificação manual - ProtectedRoute já faz isso
+  if (!user || user.role !== 'admin') return null
+
+  const totalPages = Math.ceil(totalUsers / pageSize)
 
   const handleDeleteConfirm = () => {
     if (userToDelete) {
