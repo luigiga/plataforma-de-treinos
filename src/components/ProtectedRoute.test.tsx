@@ -3,8 +3,10 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 
-const useAuthMock = vi.fn()
-const toastErrorMock = vi.fn()
+const { useAuthMock, toastErrorMock } = vi.hoisted(() => ({
+  useAuthMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+}))
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
