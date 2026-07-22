@@ -1,14 +1,23 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import EmailConfirm from './EmailConfirm'
 
-const useAuthMock = vi.fn()
-const loggerErrorMock = vi.fn()
-const exchangeCodeForSessionMock = vi.fn()
-const verifyOtpMock = vi.fn()
-const setSessionMock = vi.fn()
-const getSessionMock = vi.fn()
+const {
+  useAuthMock,
+  loggerErrorMock,
+  exchangeCodeForSessionMock,
+  verifyOtpMock,
+  setSessionMock,
+  getSessionMock,
+} = vi.hoisted(() => ({
+  useAuthMock: vi.fn(),
+  loggerErrorMock: vi.fn(),
+  exchangeCodeForSessionMock: vi.fn(),
+  verifyOtpMock: vi.fn(),
+  setSessionMock: vi.fn(),
+  getSessionMock: vi.fn(),
+}))
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
@@ -35,10 +44,6 @@ function LocationEcho() {
   const location = useLocation()
   return <div>{`loc:${location.pathname}${location.search}`}</div>
 }
-
-beforeEach(() => {
-  vi.useFakeTimers()
-})
 
 afterEach(() => {
   vi.useRealTimers()
@@ -83,11 +88,9 @@ describe('EmailConfirm page', () => {
       ).toBeInTheDocument()
     })
 
-    act(() => {
-      vi.advanceTimersByTime(1300)
-    })
-
-    expect(screen.getByText('loc:/trainer-dashboard')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('loc:/trainer-dashboard')).toBeInTheDocument()
+    }, { timeout: 2000 })
   })
 
   it('verifies token hash and redirects to login when no session is returned', async () => {
@@ -116,11 +119,9 @@ describe('EmailConfirm page', () => {
       ).toBeInTheDocument()
     })
 
-    act(() => {
-      vi.advanceTimersByTime(1900)
-    })
-
-    expect(screen.getByText('loc:/auth?tab=login')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('loc:/auth?tab=login')).toBeInTheDocument()
+    }, { timeout: 2500 })
   })
 
   it('shows error state when confirmation fails', async () => {
