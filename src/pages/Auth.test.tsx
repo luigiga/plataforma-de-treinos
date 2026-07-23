@@ -3,9 +3,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import Auth from './Auth'
 
-const useAuthMock = vi.fn()
-const toastErrorMock = vi.fn()
-const toastInfoMock = vi.fn()
+const { useAuthMock, toastErrorMock, toastInfoMock } = vi.hoisted(() => ({
+  useAuthMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+  toastInfoMock: vi.fn(),
+}))
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
@@ -79,7 +81,7 @@ describe('Auth page', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Cadastrar' }))
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Cadastrar' }))
 
     await waitFor(() => {
       expect(
