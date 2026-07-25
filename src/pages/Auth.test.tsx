@@ -81,7 +81,7 @@ describe('Auth page', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Cadastrar' }))
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Cadastrar' }))
 
     await waitFor(() => {
       expect(
