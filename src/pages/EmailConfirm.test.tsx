@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import EmailConfirm from './EmailConfirm'
 
@@ -45,12 +45,7 @@ function LocationEcho() {
   return <div>{`loc:${location.pathname}${location.search}`}</div>
 }
 
-beforeEach(() => {
-  vi.useFakeTimers()
-})
-
 afterEach(() => {
-  vi.useRealTimers()
   useAuthMock.mockReset()
   loggerErrorMock.mockReset()
   exchangeCodeForSessionMock.mockReset()
@@ -92,11 +87,9 @@ describe('EmailConfirm page', () => {
       ).toBeInTheDocument()
     })
 
-    act(() => {
-      vi.advanceTimersByTime(1300)
-    })
-
-    expect(screen.getByText('loc:/trainer-dashboard')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('loc:/trainer-dashboard')).toBeInTheDocument()
+    }, { timeout: 1500 })
   })
 
   it('verifies token hash and redirects to login when no session is returned', async () => {
@@ -125,11 +118,9 @@ describe('EmailConfirm page', () => {
       ).toBeInTheDocument()
     })
 
-    act(() => {
-      vi.advanceTimersByTime(1900)
-    })
-
-    expect(screen.getByText('loc:/auth?tab=login')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('loc:/auth?tab=login')).toBeInTheDocument()
+    }, { timeout: 2200 })
   })
 
   it('shows error state when confirmation fails', async () => {
