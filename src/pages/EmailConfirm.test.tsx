@@ -3,12 +3,21 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import EmailConfirm from './EmailConfirm'
 
-const useAuthMock = vi.fn()
-const loggerErrorMock = vi.fn()
-const exchangeCodeForSessionMock = vi.fn()
-const verifyOtpMock = vi.fn()
-const setSessionMock = vi.fn()
-const getSessionMock = vi.fn()
+const {
+  useAuthMock,
+  loggerErrorMock,
+  exchangeCodeForSessionMock,
+  verifyOtpMock,
+  setSessionMock,
+  getSessionMock,
+} = vi.hoisted(() => ({
+  useAuthMock: vi.fn(),
+  loggerErrorMock: vi.fn(),
+  exchangeCodeForSessionMock: vi.fn(),
+  verifyOtpMock: vi.fn(),
+  setSessionMock: vi.fn(),
+  getSessionMock: vi.fn(),
+}))
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
