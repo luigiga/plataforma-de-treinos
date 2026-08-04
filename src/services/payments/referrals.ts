@@ -1,5 +1,3 @@
-import { logger } from '@/lib/logger'
-
 /**
  * Serviço para gerenciar links de referência
  */

@@ -2,8 +2,6 @@ import { useTrainerEarnings } from '@/hooks/use-payments'
 import { useAuth } from '@/context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, TrendingUp, DollarSign, Clock, Calendar } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 
 export function TrainerEarnings() {
   const { user } = useAuth()
