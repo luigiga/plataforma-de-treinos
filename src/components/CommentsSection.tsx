@@ -57,7 +57,7 @@ export function CommentsSection({ workoutId }: CommentsSectionProps) {
 
       setNewComment('')
       setRating(5)
-    } catch (error) {
+    } catch {
       toast.error('Erro ao enviar avaliação')
     } finally {
       setIsSubmitting(false)

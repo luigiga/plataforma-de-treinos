@@ -7,7 +7,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form'
 import { Card, CardContent } from '@/components/ui/card'
 import { Trash2, Video, Upload, X, Plus } from 'lucide-react'

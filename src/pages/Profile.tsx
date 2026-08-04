@@ -469,12 +469,12 @@ export default function Profile() {
                     type="submit"
                     className="w-full md:w-auto"
                     disabled={
-                      profileForm.formState.isSubmitting ||
+                      isSubmittingProfile ||
                       uploading ||
                       usernameAvailable === false
                     }
                   >
-                    {profileForm.formState.isSubmitting
+                    {isSubmittingProfile
                       ? 'Salvando...'
                       : 'Salvar Alterações'}
                   </Button>
@@ -561,9 +561,9 @@ export default function Profile() {
                   <Button
                     type="submit"
                     className="w-full md:w-auto"
-                    disabled={socialForm.formState.isSubmitting}
+                    disabled={isSubmittingSocial}
                   >
-                    {socialForm.formState.isSubmitting
+                    {isSubmittingSocial
                       ? 'Salvando...'
                       : 'Salvar Redes Sociais'}
                   </Button>
